@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Select Batch — Create Quiz — Noteforge{% endblock %}
+{% block topbar_title %}AI Assessment Engine{% endblock %}
+
+{% block content %}
+<style>
+  .batch-select-wrap .form-select {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13.5px !important;
+    color: #1e293b;
+    padding: 0.6rem 0.9rem !important;
+    border-color: #cbd5e1;
+    border-radius: 10px;
+  }
+  .batch-select-wrap .form-select:focus {
+    border-color: var(--nf-indigo);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  }
+  .batch-card {
+    border: 1px solid #eef2f6 !important;
+    border-radius: 16px;
+  }
+</style>
+
+<div class="row justify-content-center py-3">
+  <div class="col-lg-6 col-md-8">
+
+    <!-- Step indicator -->
+    <div class="d-flex align-items-center gap-2 mb-3 px-1">
+      <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 fw-semibold">Step 1 of 3</span>
+      <span class="text-secondary small fw-medium">Select Target Batch</span>
+    </div>
+
+    <div class="batch-select-wrap card bg-white p-4 p-md-5 shadow-sm batch-card">
+
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <div>
+          <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-people-fill" style="color: var(--nf-indigo);"></i>
+            <span>Select Batch</span>
+          </h5>
+          <p class="text-secondary small mb-0">Choose the batch for which this MCQ test will be conducted.</p>
+        </div>
+        <a href="{% url 'teacher_quiz_list' %}" class="btn btn-sm btn-light border rounded-pill px-3">← Back</a>
+      </div>
+
+      {% if messages %}
+        {% for msg in messages %}
+          <div class="alert alert-{{ msg.tags }} border-0 rounded-3 py-2 px-3 small mb-3">
+            <i class="bi bi-exclamation-circle me-1"></i>{{ msg }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold" style="font-size: 12.5px; color: #334155;">
+            Batch <span class="text-danger">*</span>
+          </label>
+          <select name="batch" class="form-select" required>
+            <option value="">— Select a Batch —</option>
+            {% for batch in batches %}
+              <option value="{{ batch.pk }}">
+                {{ batch.name }}{% if batch.current_semester %} &nbsp;·&nbsp; Sem {{ batch.current_semester.number }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+          <a href="{% url 'teacher_quiz_list' %}" class="btn btn-light border rounded-pill px-4" style="font-size: 13px;">Cancel</a>
+          <button type="submit" class="btn btn-primary rounded-pill px-5 fw-semibold shadow-sm d-inline-flex align-items-center gap-2" style="font-size: 13px;">
+            <span>Continue</span>
+            <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

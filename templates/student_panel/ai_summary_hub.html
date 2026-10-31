@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}AI Document Summarizer — Noteforge{% endblock %}
+{% block topbar_title %}AI Document Summarizer{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">AI Document Summarizer</h4>
+    <p class="text-secondary small mb-0">Select any lecture note or study material to generate high-yield executive summaries, key concepts, and exam takeaways</p>
+  </div>
+  <a href="{% url 'student_my_library' %}" class="btn btn-sm btn-outline-primary fw-semibold rounded-3">
+    <i class="bi bi-bookmark-star-fill me-1"></i> My Study Library
+  </a>
+</div>
+
+<!-- Search & Subject Filter Bar -->
+<div class="card bg-white p-3 mb-4 shadow-sm">
+  <form method="get" class="row g-2 align-items-center">
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-funnel"></i></label>
+        <select name="sub" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+          <option value="">— All Current Semester Subjects —</option>
+          {% for s in subjects %}
+          <option value="{{ s.pk }}" {% if selected_sub == s.pk|stringformat:"i" %}selected{% endif %}>{{ s.subject_code }} — {{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <input type="text" name="q" value="{{ query }}" class="form-control form-control-sm" placeholder="Search by note title or keyword…">
+        <button class="btn btn-sm btn-light border" type="submit"><i class="bi bi-search"></i></button>
+      </div>
+    </div>
+    {% if selected_sub or query %}
+    <div class="col-auto">
+      <a href="{% url 'student_ai_summary_hub' %}" class="btn btn-sm btn-light border"><i class="bi bi-x-circle me-1"></i>Clear Filter</a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Material Cards Grid -->
+<div class="row g-3">
+  {% for mat in materials %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card bg-white h-100 shadow-sm border-0 d-flex flex-column justify-content-between p-3" style="border: 1px solid #e2e8f0 !important; border-radius: 12px;">
+      <div>
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="badge bg-primary-subtle text-primary fw-semibold">{{ mat.subject.subject_code }}</span>
+          {% if mat.id in saved_material_ids %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.7rem;"><i class="bi bi-bookmark-check-fill me-1"></i>Saved</span>
+          {% endif %}
+        </div>
+        <h6 class="fw-bold text-dark mb-1 text-truncate" title="{{ mat.title }}">{{ mat.title }}</h6>
+        <p class="text-secondary small mb-2 text-truncate" style="font-size: 0.8rem;">{{ mat.subject.name }}</p>
+        {% if mat.description %}
+          <p class="text-muted small mb-3 text-truncate-2" style="font-size: 0.8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+            {{ mat.description }}
+          </p>
+        {% endif %}
+        <div class="small text-muted mb-3" style="font-size: 0.75rem;">
+          <i class="bi bi-person me-1"></i>{{ mat.uploaded_by.get_full_name|default:mat.uploaded_by.username }} &bull; <i class="bi bi-clock me-1"></i>{{ mat.created_at|date:"M d, Y" }}
+        </div>
+      </div>
+
+      <div class="pt-2 border-top d-flex align-items-center justify-content-between gap-1 flex-wrap">
+        <a href="{% url 'student_document_summarize' mat.pk %}" class="btn btn-sm btn-primary fw-semibold rounded-pill px-3">
+          <i class="bi bi-magic me-1"></i> AI Summary
+        </a>
+        <div class="d-flex gap-1">
+          <a href="{% url 'student_mindmap_generator' mat.pk %}" class="btn btn-sm btn-light border rounded-pill" title="View Mind-Map">
+            <i class="bi bi-diagram-2"></i>
+          </a>
+          {% if mat.file %}
+            <a href="{% url 'student_download_material' mat.pk %}" target="_blank" class="btn btn-sm btn-light border rounded-pill" title="Download Material">
+              <i class="bi bi-download"></i>
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card bg-white text-center py-5 shadow-sm border-0" style="border: 1px solid #e2e8f0 !important; border-radius: 12px;">
+      <div class="text-muted mb-3">
+        <i class="bi bi-journal-x fs-1 text-secondary opacity-50"></i>
+      </div>
+      <h6 class="fw-bold text-dark">No Study Materials Available</h6>
+      <p class="text-secondary small mb-3">No course notes matching your filter were found for your current semester.</p>
+      <div>
+        <a href="{% url 'student_material_list' %}" class="btn btn-sm btn-primary rounded-pill px-4">Browse All Materials</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

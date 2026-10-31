@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}My Study Library — Noteforge{% endblock %}
+{% block topbar_title %}Saved Study Library{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">My Study Library</h4>
+    <p class="text-secondary small mb-0">Persistent storage for your saved AI summaries and revision notes</p>
+  </div>
+  <a href="{% url 'student_material_list' %}" class="btn btn-primary"><i class="bi bi-journal-text me-1"></i>Browse Course Materials</a>
+</div>
+
+<div class="row g-3">
+  {% for s in summaries %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card bg-white h-100 d-flex flex-column justify-content-between">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <span class="badge bg-primary-subtle text-primary">{{ s.get_summary_type_display }}</span>
+          <small class="text-muted" style="font-size: 0.75rem;">{{ s.created_at|date:"d M Y" }}</small>
+        </div>
+        <h6 class="fw-bold text-dark mb-2">{{ s.title }}</h6>
+        <div class="bg-light rounded-3 p-3 small text-secondary" style="max-height: 140px; overflow-y: auto; white-space: pre-line;">
+          {{ s.summary_text|truncatewords:35 }}
+        </div>
+      </div>
+      <div class="card-footer bg-white border-top d-flex align-items-center justify-content-between py-2.5 px-4">
+        {% if s.source_material %}
+        <a href="{% url 'student_document_summarize' s.source_material.pk %}" class="btn btn-sm btn-outline-primary">Full View</a>
+        {% else %}
+        <small class="text-muted">Saved Entry</small>
+        {% endif %}
+        <a href="{% url 'student_delete_saved_summary' s.pk %}" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash me-1"></i>Remove</a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card bg-white text-center p-5">
+      <div class="text-muted mb-3"><i class="bi bi-bookmark-x fs-1 opacity-50"></i></div>
+      <h6 class="fw-bold text-dark mb-1">Your library is currently empty</h6>
+      <p class="text-secondary small mb-3">Summarize any course study material and click <strong>"Save to My Library"</strong> to store your revision notes here.</p>
+      <div>
+        <a href="{% url 'student_material_list' %}" class="btn btn-primary btn-sm px-4">Explore Study Materials →</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% block title %}Visual Mind-Map — {{ material.title }} — Noteforge{% endblock %}
+{% block topbar_title %}Visual Study Mind-Map{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Visual Study Mind-Map</h4>
+    <p class="text-secondary small mb-0">High-yield educational infographic synthesized for <strong>{{ material.title }}</strong> ({{ material.subject.subject_code }})</p>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    {% if mindmap_url %}
+    <a href="{{ mindmap_url }}" download="MindMap_{{ material.title|slugify }}.png" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold shadow-sm">
+      <i class="bi bi-download me-1"></i> Download Mind Map
+    </a>
+    <a href="?regenerate=1" class="btn btn-outline-warning btn-sm rounded-pill px-3 fw-semibold" id="regenerateBtn" onclick="showLoadingState()">
+      <i class="bi bi-arrow-clockwise me-1"></i> Regenerate Mind Map
+    </a>
+    {% endif %}
+    <a href="{% url 'student_document_summarize' material.pk %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+      <i class="bi bi-file-earmark-text me-1"></i> AI Summary
+    </a>
+    <a href="{% url 'student_material_list' %}" class="btn btn-light border btn-sm rounded-pill px-3">
+      ← Back to Materials
+    </a>
+  </div>
+</div>
+
+{% if error_message %}
+<div class="alert alert-warning border border-warning-subtle shadow-sm rounded-3 mx-auto mb-4 d-flex align-items-center justify-content-between p-3" style="max-width: 1100px;">
+  <div class="d-flex align-items-center gap-3">
+    <div class="bg-warning text-dark rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+      <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    </div>
+    <div>
+      <h6 class="fw-bold mb-0 text-dark">Mind Map Notice</h6>
+      <p class="small text-secondary mb-0">{{ error_message }}</p>
+    </div>
+  </div>
+  <a href="?regenerate=1" class="btn btn-warning btn-sm rounded-pill px-3 fw-semibold" onclick="showLoadingState()">
+    <i class="bi bi-arrow-clockwise me-1"></i> Retry Generation
+  </a>
+</div>
+{% endif %}
+
+<!-- Mind Map Card Container -->
+<div class="card bg-white mx-auto shadow-sm border-0 rounded-3 overflow-hidden position-relative" style="max-width: 1100px; border: 1px solid #eef2f6 !important; border-radius: 14px;">
+  
+  <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: var(--nf-indigo) !important;">
+        <i class="bi bi-diagram-3-fill fs-6"></i>
+      </div>
+      <div>
+        <span class="fw-bold text-dark" style="font-size: 14.5px;">Synthesized Concept Mind Map</span>
+        <small class="text-muted d-block" style="font-size: 0.75rem;">Educational Infographic & Visual Revision Architecture</small>
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      {% if is_cached %}
+        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-2.5 py-1">
+          <i class="bi bi-lightning-charge-fill me-1"></i>Saved Mind Map
+        </span>
+      {% endif %}
+      <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1">
+        <i class="bi bi-patch-check-fill me-1"></i>HD Visual Image
+      </span>
+      <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold">
+        {{ material.subject.subject_code }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Loading State Indicator (Hidden by default, shown during generation) -->
+  <div id="mindmapLoadingOverlay" class="p-5 text-center bg-light" style="display: none; min-height: 400px;">
+    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <h5 class="fw-bold text-dark mb-1" id="loadingStageTitle">Analyzing study material...</h5>
+    <p class="text-secondary small mb-3" id="loadingStageDesc">Extracting key concepts, formulas, and visual hierarchy from {{ material.title }}.</p>
+    <div class="progress mx-auto" style="height: 6px; max-width: 320px;">
+      <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 75%"></div>
+    </div>
+  </div>
+
+  <!-- Interactive Mind-Map Image Viewer -->
+  <div class="card-body p-3 p-md-4 bg-light d-flex flex-column align-items-center" id="mindmapViewerContainer" style="overflow: hidden;">
+    
+    {% if mindmap_url %}
+    <!-- Zoom & Viewer Controls Toolbar -->
+    <div class="d-flex align-items-center justify-content-between w-100 mb-3 px-2 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-1 bg-white p-1 rounded-pill border shadow-sm">
+        <button type="button" class="btn btn-sm btn-light rounded-circle px-2 py-1" onclick="zoomIn()" title="Zoom In">
+          <i class="bi bi-zoom-in"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-light rounded-circle px-2 py-1" onclick="zoomOut()" title="Zoom Out">
+          <i class="bi bi-zoom-out"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-light rounded-pill px-2.5 py-0.5" style="font-size: 0.78rem;" onclick="resetZoom()" title="Reset Zoom">
+          <span id="zoomLevel">100%</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-light rounded-circle px-2 py-1" onclick="toggleFullscreen()" title="Fullscreen Preview">
+          <i class="bi bi-arrows-fullscreen"></i>
+        </button>
+      </div>
+      <div class="text-secondary small">
+        <i class="bi bi-info-circle me-1"></i> Scroll or pinch to zoom • High-resolution educational infographic
+      </div>
+    </div>
+
+    <!-- Scalable High-Res Image Viewport -->
+    <div class="w-100 text-center bg-white rounded-3 shadow-sm border p-2 p-md-3" style="overflow: auto; max-height: 800px;" id="imageViewport">
+      <img src="{{ mindmap_url }}" alt="Mind Map for {{ material.title }}" id="mindmapImage" class="img-fluid rounded shadow-sm" style="transition: transform 0.2s ease-out; transform-origin: top center; max-width: 100%; height: auto; cursor: grab;">
+    </div>
+
+    {% elif not error_message %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-diagram-3 fs-1 d-block mb-3 opacity-50"></i>
+      <h6>No mind map image available yet.</h6>
+      <p class="small">Click "Regenerate Mind Map" above to synthesize this material.</p>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="card-footer bg-white border-top d-flex align-items-center justify-content-between py-3 px-4 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      {% if mindmap_url %}
+      <a href="{{ mindmap_url }}" download="MindMap_{{ material.title|slugify }}.png" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold">
+        <i class="bi bi-download me-1"></i> Download Mind Map Image
+      </a>
+      {% endif %}
+      <a href="{% url 'student_document_summarize' material.pk %}" class="btn btn-sm btn-light border rounded-pill px-3">
+        <i class="bi bi-file-earmark-text me-1"></i> View Text Summary
+      </a>
+    </div>
+    <small class="text-muted">High-yield revision visual powered by NoteForge Intelligence</small>
+  </div>
+
+</div>
+
+<!-- Zoom & Loading State JavaScript -->
+<script>
+  let currentZoom = 1.0;
+  const zoomStep = 0.15;
+  const maxZoom = 2.5;
+  const minZoom = 0.5;
+
+  function updateZoom() {
+    const img = document.getElementById('mindmapImage');
+    const label = document.getElementById('zoomLevel');
+    if (img) {
+      img.style.transform = `scale(${currentZoom})`;
+    }
+    if (label) {
+      label.innerText = `${Math.round(currentZoom * 100)}%`;
+    }
+  }
+
+  function zoomIn() {
+    if (currentZoom < maxZoom) {
+      currentZoom = Math.min(maxZoom, currentZoom + zoomStep);
+      updateZoom();
+    }
+  }
+
+  function zoomOut() {
+    if (currentZoom > minZoom) {
+      currentZoom = Math.max(minZoom, currentZoom - zoomStep);
+      updateZoom();
+    }
+  }
+
+  function resetZoom() {
+    currentZoom = 1.0;
+    updateZoom();
+  }
+
+  function toggleFullscreen() {
+    const viewport = document.getElementById('imageViewport');
+    if (!document.fullscreenElement) {
+      if (viewport.requestFullscreen) {
+        viewport.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
+  function showLoadingState() {
+    const overlay = document.getElementById('mindmapLoadingOverlay');
+    const viewer = document.getElementById('mindmapViewerContainer');
+    const regenBtn = document.getElementById('regenerateBtn');
+
+    if (overlay) overlay.style.display = 'block';
+    if (viewer) viewer.style.display = 'none';
+    if (regenBtn) {
+      regenBtn.classList.add('disabled');
+      regenBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Generating...';
+    }
+
+    const stages = [
+      { title: "Analyzing study material...", desc: "Reading and identifying key educational topics..." },
+      { title: "Creating your mind map...", desc: "Selecting core principles, diagrams, and formulas..." },
+      { title: "Generating visual...", desc: "Rendering high-resolution educational infographic image..." }
+    ];
+
+    let stageIdx = 0;
+    setInterval(function() {
+      stageIdx = (stageIdx + 1) % stages.length;
+      const t = document.getElementById('loadingStageTitle');
+      const d = document.getElementById('loadingStageDesc');
+      if (t) t.innerText = stages[stageIdx].title;
+      if (d) d.innerText = stages[stageIdx].desc;
+    }, 2800);
+  }
+</script>
+{% endblock %}

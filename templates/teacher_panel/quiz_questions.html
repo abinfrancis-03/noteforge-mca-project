@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+{% block title %}Question Review Sheet — Noteforge{% endblock %}
+{% block topbar_title %}AI Assessment Engine &bull; Review Sheet{% endblock %}
+
+{% block content %}
+<style>
+  .review-sheet-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  .q-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: all 0.15s ease;
+  }
+  .q-card:hover {
+    border-color: #cbd5e1;
+  }
+  .opt-box {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .opt-box.correct {
+    border-color: #10b981;
+    background-color: #f0fdf4;
+    color: #065f46;
+    font-weight: 600;
+  }
+  .opt-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .opt-pill-default {
+    background: #f1f5f9;
+    color: #475569;
+  }
+  .opt-pill-correct {
+    background: #10b981;
+    color: #ffffff;
+  }
+</style>
+
+<div class="review-sheet-wrap py-2">
+
+  <!-- Top Header & Actions -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 pb-3 border-bottom">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h4 class="fw-bold text-dark mb-0">{{ quiz.title }}</h4>
+        {% if quiz.is_published %}
+          <span class="badge bg-success text-white rounded-pill px-2.5 py-0.5 small fw-semibold">Published</span>
+        {% else %}
+          <span class="badge bg-warning text-dark rounded-pill px-2.5 py-0.5 small fw-semibold">Draft</span>
+        {% endif %}
+      </div>
+      <div class="text-secondary small">
+        {{ quiz.subject.name }} ({{ quiz.subject.subject_code }}) &bull; {{ all_questions_count }} Questions &bull; {{ quiz.time_limit_mins }} mins
+      </div>
+    </div>
+
+    <!-- Publish / Unpublish Options -->
+    <div class="d-flex align-items-center gap-2">
+      <a href="{% url 'teacher_quiz_list' %}" class="btn btn-sm btn-light border rounded-pill px-3 py-1.5 text-secondary">
+        Quizzes Hub
+      </a>
+      {% if quiz.is_published %}
+        <a href="{% url 'teacher_quiz_publish' quiz.pk %}?action=unpublish" class="btn btn-sm btn-outline-danger rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5" onclick="return confirm('Unpublish this quiz? Students will no longer see it.');">
+          <i class="bi bi-eye-slash"></i>
+          <span>Unpublish Quiz</span>
+        </a>
+      {% else %}
+        <a href="{% url 'teacher_quiz_publish' quiz.pk %}" class="btn btn-sm btn-success text-white rounded-pill px-4 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm" onclick="return confirm('Publish this assessment to students?');">
+          <i class="bi bi-send-check"></i>
+          <span>Publish Quiz</span>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Questions & Answers List -->
+  {% for q in questions %}
+    <div class="q-card">
+      <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+        <div class="d-flex align-items-start gap-2.5">
+          <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 small fw-bold">
+            Q{{ forloop.counter }}
+          </span>
+          <h6 class="fw-semibold text-dark mb-0 lh-base pt-0.5" style="font-size: 15px;">
+            {{ q.text }}
+          </h6>
+        </div>
+
+        <!-- Minimal Edit Option -->
+        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1.5 flex-shrink-0" style="font-size: 12.5px;" data-bs-toggle="modal" data-bs-target="#editQuestionModal{{ q.id }}">
+          <i class="bi bi-pencil"></i>
+          <span>Edit</span>
+        </button>
+      </div>
+
+      <!-- Answers Grid (Options A, B, C, D) -->
+      <div class="row g-2 mb-0">
+        <div class="col-md-6">
+          <div class="opt-box {% if q.correct_option == 'A' %}correct{% endif %}">
+            <span class="opt-pill {% if q.correct_option == 'A' %}opt-pill-correct{% else %}opt-pill-default{% endif %}">A</span>
+            <span class="flex-grow-1">{{ q.option_a }}</span>
+            {% if q.correct_option == 'A' %}<i class="bi bi-check2 text-success fw-bold ms-auto"></i>{% endif %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="opt-box {% if q.correct_option == 'B' %}correct{% endif %}">
+            <span class="opt-pill {% if q.correct_option == 'B' %}opt-pill-correct{% else %}opt-pill-default{% endif %}">B</span>
+            <span class="flex-grow-1">{{ q.option_b }}</span>
+            {% if q.correct_option == 'B' %}<i class="bi bi-check2 text-success fw-bold ms-auto"></i>{% endif %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="opt-box {% if q.correct_option == 'C' %}correct{% endif %}">
+            <span class="opt-pill {% if q.correct_option == 'C' %}opt-pill-correct{% else %}opt-pill-default{% endif %}">C</span>
+            <span class="flex-grow-1">{{ q.option_c }}</span>
+            {% if q.correct_option == 'C' %}<i class="bi bi-check2 text-success fw-bold ms-auto"></i>{% endif %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="opt-box {% if q.correct_option == 'D' %}correct{% endif %}">
+            <span class="opt-pill {% if q.correct_option == 'D' %}opt-pill-correct{% else %}opt-pill-default{% endif %}">D</span>
+            <span class="flex-grow-1">{{ q.option_d }}</span>
+            {% if q.correct_option == 'D' %}<i class="bi bi-check2 text-success fw-bold ms-auto"></i>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Modal for Question #{{ forloop.counter }} -->
+    <div class="modal fade" id="editQuestionModal{{ q.id }}" tabindex="-1" aria-labelledby="editLabel{{ q.id }}" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+          <form method="POST" action="{% url 'teacher_question_edit' quiz.pk q.id %}">
+            {% csrf_token %}
+            <!-- Hidden required metadata defaults so QuestionReviewForm validates cleanly -->
+            <input type="hidden" name="topic" value="{{ q.topic|default:'General' }}">
+            <input type="hidden" name="difficulty" value="{{ q.difficulty|default:'medium' }}">
+            <input type="hidden" name="blooms_level" value="{{ q.blooms_level|default:'Understand' }}">
+
+            <div class="modal-header border-bottom px-4 py-3">
+              <h5 class="modal-title fw-bold text-dark" id="editLabel{{ q.id }}">
+                Edit Question {{ forloop.counter }}
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body px-4 py-3">
+              <!-- Question Text -->
+              <div class="mb-3">
+                <label class="form-label fw-bold small text-dark">Question Text</label>
+                <textarea name="text" rows="3" class="form-control rounded-3" required>{{ q.text }}</textarea>
+              </div>
+
+              <!-- Options Grid -->
+              <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small text-secondary">Option A</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light fw-bold">A</span>
+                    <input type="text" name="option_a" value="{{ q.option_a }}" class="form-control" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small text-secondary">Option B</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light fw-bold">B</span>
+                    <input type="text" name="option_b" value="{{ q.option_b }}" class="form-control" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small text-secondary">Option C</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light fw-bold">C</span>
+                    <input type="text" name="option_c" value="{{ q.option_c }}" class="form-control" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small text-secondary">Option D</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light fw-bold">D</span>
+                    <input type="text" name="option_d" value="{{ q.option_d }}" class="form-control" required>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Correct Option -->
+              <div class="mb-3">
+                <label class="form-label fw-bold small text-dark">Correct Option</label>
+                <select name="correct_option" class="form-select rounded-3" required>
+                  <option value="A" {% if q.correct_option == 'A' %}selected{% endif %}>Option A</option>
+                  <option value="B" {% if q.correct_option == 'B' %}selected{% endif %}>Option B</option>
+                  <option value="C" {% if q.correct_option == 'C' %}selected{% endif %}>Option C</option>
+                  <option value="D" {% if q.correct_option == 'D' %}selected{% endif %}>Option D</option>
+                </select>
+              </div>
+
+              <!-- Explanation -->
+              <div class="mb-2">
+                <label class="form-label fw-bold small text-dark">Explanation</label>
+                <textarea name="explanation" rows="2" class="form-control rounded-3" required>{{ q.explanation }}</textarea>
+              </div>
+            </div>
+
+            <div class="modal-footer px-4 py-3 bg-light rounded-bottom-4 d-flex align-items-center justify-content-between">
+              <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary rounded-pill px-4 py-1.5 fw-semibold">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <div class="text-center py-5 text-muted">
+      <p class="mb-0">No questions available to review.</p>
+    </div>
+  {% endfor %}
+
+  <!-- Bottom Publish / Unpublish Actions -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-4 pt-3 border-top">
+    <a href="{% url 'teacher_quiz_list' %}" class="btn btn-outline-secondary rounded-pill px-4 py-2">
+      <i class="bi bi-arrow-left me-1"></i>Back to Quizzes
+    </a>
+
+    <div>
+      {% if quiz.is_published %}
+        <a href="{% url 'teacher_quiz_publish' quiz.pk %}?action=unpublish" class="btn btn-outline-danger rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2" onclick="return confirm('Unpublish this quiz? Students will no longer see it.');">
+          <i class="bi bi-eye-slash"></i>
+          <span>Unpublish Quiz</span>
+        </a>
+      {% else %}
+        <a href="{% url 'teacher_quiz_publish' quiz.pk %}" class="btn btn-success text-white rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" onclick="return confirm('Publish this assessment to students?');">
+          <i class="bi bi-send-check"></i>
+          <span>Publish Quiz</span>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

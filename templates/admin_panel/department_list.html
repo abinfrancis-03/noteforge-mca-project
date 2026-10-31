@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block title %}Departments — Noteforge{% endblock %}
+{% block topbar_title %}Academic Departments{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Academic Departments</h4>
+    <p class="text-secondary small mb-0">Provision and manage isolated academic tracks</p>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="input-group border rounded-pill overflow-hidden bg-white shadow-sm" style="width: 250px;">
+      <span class="input-group-text bg-white border-0 text-muted ps-3 pe-1"><i class="bi bi-search"></i></span>
+      <input type="text" id="deptSearchInput" class="form-control border-0 ps-1 pe-3 shadow-none bg-white" placeholder="Search departments..." onkeyup="filterDepartments()" style="font-size: 13px;">
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDeptModal">
+      <i class="bi bi-plus-lg me-1"></i>Add Department
+    </button>
+  </div>
+</div>
+
+<div class="card bg-white">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Department</th>
+          <th>Code</th>
+          <th>Head of Department</th>
+          <th>Semesters</th>
+          <th>Faculty Teachers</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in departments %}
+        <tr>
+          <td><strong class="text-dark">{{ d.name }}</strong></td>
+          <td><span class="badge bg-primary-subtle text-primary">{{ d.code }}</span></td>
+          <td>
+            {% if d.hod %}
+              <span class="badge bg-warning-subtle text-warning-emphasis"><i class="bi bi-star-fill me-1"></i>{{ d.hod.get_full_name|default:d.hod.username }}</span>
+            {% else %}
+              <span class="text-muted small">— Unassigned —</span>
+            {% endif %}
+          </td>
+          <td><span class="badge bg-light text-dark border">{{ d.sem_count }}</span></td>
+          <td><span class="badge bg-light text-dark border">{{ d.teacher_count }}</span></td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-1">
+              <button type="button" class="btn btn-sm btn-light border text-dark px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#editDeptModal" data-name="{{ d.name }}" data-code="{{ d.code }}" data-url="{% url 'department_edit' d.pk %}">Edit</button>
+              <button type="button" class="btn btn-sm btn-light border text-danger px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#deleteModal" data-name="{{ d.name }}" data-url="{% url 'department_delete' d.pk %}">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4 small">No departments configured yet. <button type="button" class="btn btn-link p-0 text-decoration-none small" data-bs-toggle="modal" data-bs-target="#addDeptModal">Add Department →</button></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Department Modal -->
+<div class="modal fade" id="addDeptModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+          <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-building fs-5" style="color: var(--nf-indigo) !important;"></i> Add Department
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{% url 'department_add' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="mb-3 text-start">
+            <label class="form-label fw-semibold text-dark small">Department Name</label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. Master of Computer Applications" required>
+          </div>
+          <div class="mb-4 text-start">
+            <label class="form-label fw-semibold text-dark small">Short Code</label>
+            <input type="text" name="code" class="form-control" placeholder="e.g. MCA" required>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">Add Department</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Department Modal -->
+<div class="modal fade" id="editDeptModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+          <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-building fs-5" style="color: var(--nf-indigo) !important;"></i> Edit Department
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" id="editDeptForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="mb-3 text-start">
+            <label class="form-label fw-semibold text-dark small">Department Name</label>
+            <input type="text" name="name" id="editDeptName" class="form-control" required>
+          </div>
+          <div class="mb-4 text-start">
+            <label class="form-label fw-semibold text-dark small">Short Code</label>
+            <input type="text" name="code" id="editDeptCode" class="form-control" required>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">Save Changes</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Delete "<span id="deleteObjectName"></span>"?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Are you sure you want to permanently delete this item? This action cannot be undone and all associated records will be removed.
+        </p>
+
+        <form method="post" id="deleteForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-danger btn-pill px-4 py-2 fw-semibold">Yes, Delete</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function filterDepartments() {
+    const input = document.getElementById('deptSearchInput');
+    const filter = input.value.toLowerCase().trim();
+    const tableBody = document.querySelector('.table tbody');
+    if (!tableBody) return;
+    const rows = tableBody.getElementsByTagName('tr');
+
+    let visibleCount = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.classList.contains('no-results-row')) continue;
+      
+      const text = row.textContent.toLowerCase();
+      if (filter === '' || text.includes(filter)) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    }
+
+    let noResultsRow = document.getElementById('noSearchMatchRow');
+    if (visibleCount === 0 && filter !== '') {
+      if (!noResultsRow) {
+        noResultsRow = document.createElement('tr');
+        noResultsRow.id = 'noSearchMatchRow';
+        noResultsRow.className = 'no-results-row';
+        noResultsRow.innerHTML = `<td colspan="6" class="text-center text-muted py-4 small">No departments found matching "${input.value}"</td>`;
+        tableBody.appendChild(noResultsRow);
+      } else {
+        noResultsRow.innerHTML = `<td colspan="6" class="text-center text-muted py-4 small">No departments found matching "${input.value}"</td>`;
+        noResultsRow.style.display = '';
+      }
+    } else if (noResultsRow) {
+      noResultsRow.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const editDeptModal = document.getElementById('editDeptModal');
+    if (editDeptModal) {
+      editDeptModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        document.getElementById('editDeptName').value = button.getAttribute('data-name');
+        document.getElementById('editDeptCode').value = button.getAttribute('data-code');
+        document.getElementById('editDeptForm').action = button.getAttribute('data-url');
+      });
+    }
+
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+      deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        document.getElementById('deleteObjectName').textContent = button.getAttribute('data-name');
+        document.getElementById('deleteForm').action = button.getAttribute('data-url');
+      });
+    }
+  });
+</script>
+
+{% endblock %}
+

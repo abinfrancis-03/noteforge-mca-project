@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Study Material — Noteforge{% endblock %}
+{% block topbar_title %}{{ action }} Study Material{% endblock %}
+
+{% block content %}
+<style>
+  .material-form-wrap .form-control,
+  .material-form-wrap .form-select {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px !important;
+    color: #1e293b;
+    padding: 0.5rem 0.75rem !important;
+    border-color: #cbd5e1;
+    border-radius: 8px;
+  }
+  .material-form-wrap .form-control::placeholder {
+    font-size: 13px !important;
+    color: #94a3b8;
+  }
+  .material-form-wrap .form-label {
+    font-size: 12.5px !important;
+    margin-bottom: 0.35rem;
+  }
+</style>
+
+<div class="row justify-content-center py-3">
+  <div class="col-md-9 col-lg-7">
+    <div class="material-form-wrap card bg-white p-4 p-md-5 shadow-sm border-0 rounded-3" style="border: 1px solid #eef2f6 !important;">
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-file-earmark-arrow-up-fill fs-5" style="color: var(--nf-indigo) !important;"></i>
+          <span>{{ action }} Study Material</span>
+        </h5>
+        <a href="{% url 'teacher_material_list' %}" class="btn btn-sm btn-light border rounded-pill px-3">← Back</a>
+      </div>
+
+      {% if assigned_subs_count == 0 %}
+      <div class="alert alert-warning border-warning-subtle bg-warning-subtle text-warning-emphasis py-2.5 px-3 rounded-3 small mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-1.5"></i>
+        You have not been assigned any subjects yet. You can only upload notes for subjects assigned to you by the administrator.
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark">Material Title *</label>
+          <input type="text" name="title" class="form-control" value="{{ material.title|default:'' }}" placeholder="e.g. Unit 1 Notes — Data Structures &amp; Algorithms" required>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <!-- Semester Selector -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-dark">Semester *</label>
+            <select id="semSelect" class="form-select" onchange="loadSubjectsForSem()" {% if selected_sem %}disabled style="background-color: #f1f5f9; cursor: not-allowed;"{% else %}required{% endif %}>
+              <option value="">— Select Semester —</option>
+              {% for s in semesters %}
+              <option value="{{ s.pk }}" {% if selected_sem and selected_sem.pk == s.pk %}selected{% elif material and material.subject.semester_id == s.pk %}selected{% endif %}>Semester {{ s.number }}</option>
+              {% endfor %}
+            </select>
+            {% if selected_sem %}
+            <input type="hidden" name="semester" value="{{ selected_sem.pk }}">
+            {% endif %}
+          </div>
+
+          <!-- Subject Selector (Cascading) -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-dark">Subject *</label>
+            <select id="subSelect" class="form-select" {% if not selected_sub %}name="subject" required{% else %}disabled style="background-color: #f1f5f9; cursor: not-allowed;"{% endif %}>
+              <option value="">— Select Subject —</option>
+              {% if selected_sub %}
+                <option value="{{ selected_sub.pk }}" selected>{{ selected_sub.subject_code }} — {{ selected_sub.name }}</option>
+              {% elif available_subjects %}
+                {% for sub in available_subjects %}
+                <option value="{{ sub.pk }}" {% if material and material.subject_id == sub.pk %}selected{% endif %}>{{ sub.subject_code }} — {{ sub.name }}</option>
+                {% endfor %}
+              {% elif material %}
+                <option value="{{ material.subject_id }}" selected>{{ material.subject.subject_code }} — {{ material.subject.name }}</option>
+              {% endif %}
+            </select>
+            {% if selected_sub %}
+            <input type="hidden" name="subject" value="{{ selected_sub.pk }}">
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark">Description / Topics Covered <span class="text-muted fw-normal">(optional)</span></label>
+          <textarea name="description" class="form-control" rows="3" placeholder="Brief summary of syllabus points, lecture notes, or guidelines">{{ material.description|default:'' }}</textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark">Upload Document / File <span class="text-muted fw-normal">(PDF, DOC, ZIP)</span></label>
+          <input type="file" name="file" class="form-control">
+          {% if material.file %}
+          <div class="form-text small mt-1.5 text-muted">
+            <i class="bi bi-paperclip me-1 text-primary"></i>Current file: <a href="{{ material.file.url }}" target="_blank" class="fw-semibold">{{ material.file.name }}</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-dark">External URL / Cloud Drive Link <span class="text-muted fw-normal">(optional)</span></label>
+          <div class="input-group">
+            <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-link-45deg"></i></span>
+            <input type="url" name="external_link" class="form-control border-start-0" value="{{ material.external_link|default:'' }}" placeholder="https://drive.google.com/...">
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top">
+          <a href="{% url 'teacher_material_list' %}" class="btn btn-light border rounded-pill px-4" style="font-size: 13px;">Cancel</a>
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm" style="font-size: 13px;">
+            <i class="bi bi-check2-circle me-1"></i>{{ action }} Material
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function loadSubjectsForSem() {
+    const semId = document.getElementById('semSelect').value;
+    const subSel = document.getElementById('subSelect');
+    subSel.innerHTML = '<option value="">Loading...</option>';
+    if (!semId) {
+      subSel.innerHTML = '<option value="">— Select Subject —</option>';
+      return;
+    }
+    fetch(`/teacher/api/subjects/?sem=${semId}`)
+      .then(r => r.json())
+      .then(data => {
+        subSel.innerHTML = '<option value="">— Select Subject —</option>';
+        data.subjects.forEach(s => {
+          subSel.innerHTML += `<option value="${s.id}">${s.code} — ${s.name}</option>`;
+        });
+      })
+      .catch(() => {
+        subSel.innerHTML = '<option value="">— Select Subject —</option>';
+      });
+  }
+
+  // Ensure disabled inputs are submitted or preserved
+  const materialForm = document.querySelector('form');
+  if (materialForm) {
+    materialForm.addEventListener('submit', function() {
+      const semSelect = document.getElementById('semSelect');
+      const subSelect = document.getElementById('subSelect');
+      if (semSelect) semSelect.disabled = false;
+      if (subSelect) subSelect.disabled = false;
+    });
+  }
+</script>
+{% endblock %}

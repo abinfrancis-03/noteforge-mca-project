@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Quizzes & Tests — Noteforge{% endblock %}
+{% block topbar_title %}Faculty Assessment Hub{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Quizzes & Evaluation Tests</h4>
+    <p class="text-secondary small mb-0">Create, manage, and analyze quizzes for your subject courses</p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'teacher_quiz_analytics' %}" class="btn btn-outline-primary d-inline-flex align-items-center gap-1.5 shadow-sm">
+      <i class="bi bi-bar-chart-line-fill"></i>
+      <span>Student Analytics</span>
+    </a>
+    <a href="{% url 'teacher_quiz_select_batch' %}" class="btn btn-primary d-inline-flex align-items-center gap-1.5 shadow-sm">
+      <i class="bi bi-plus-lg"></i>
+      <span>Create New Quiz</span>
+    </a>
+  </div>
+</div>
+
+<!-- Configured Quizzes Card -->
+<div class="card bg-white shadow-sm border-0 rounded-3 overflow-hidden" style="border: 1px solid #eef2f6 !important;">
+  <div class="card-header bg-white py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <h6 class="fw-bold text-dark mb-0" style="font-size: 14px;">Configured Assessments</h6>
+      <span class="badge bg-light text-dark border">{{ quizzes.count }} test{{ quizzes.count|pluralize }}</span>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light bg-opacity-50">
+        <tr>
+          <th class="ps-4 text-muted small fw-semibold">TITLE</th>
+          <th class="text-muted small fw-semibold">SUBJECT</th>
+          <th class="text-muted small fw-semibold text-center">QUESTIONS</th>
+          <th class="text-muted small fw-semibold text-center">DURATION</th>
+          <th class="pe-4 text-end text-muted small fw-semibold">STATUS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in quizzes %}
+        <tr>
+          <td class="ps-4">
+            <strong class="text-dark" style="font-size: 13.5px;">{{ q.title }}</strong>
+          </td>
+          <td>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11.5px;">
+              <span class="font-monospace">{{ q.subject.subject_code }}</span> <span class="text-muted">&bull;</span> Sem {{ q.subject.semester.number }}
+            </span>
+          </td>
+          <td class="text-center">
+            <span class="badge bg-light text-dark border">{{ q.questions.count|default:q.num_questions }} MCQs</span>
+          </td>
+          <td class="text-center small text-secondary">
+            <i class="bi bi-clock me-1 text-muted"></i>{{ q.time_limit_mins }}m
+          </td>
+          <td class="pe-4 text-end">
+            <div class="d-inline-flex align-items-center gap-2 justify-content-end" style="white-space: nowrap;">
+              {% if q.is_published %}
+                <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11px;">
+                  <i class="bi bi-broadcast me-1"></i>Published
+                </span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11px;">
+                  <i class="bi bi-pencil-square me-1"></i>Draft
+                </span>
+              {% endif %}
+
+              <div class="dropdown d-inline-block">
+                <button class="btn btn-sm btn-light border rounded-pill px-2 py-1 text-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Test Actions">
+                  <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 small">
+                  <li>
+                    <a class="dropdown-item py-1.5 d-flex align-items-center" href="{% url 'teacher_quiz_test_analytics' q.pk %}">
+                      <i class="bi bi-bar-chart-fill me-2 text-primary"></i>
+                      <span>Analytics</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item py-1.5 d-flex align-items-center" href="{% url 'teacher_quiz_questions' q.pk %}">
+                      <i class="bi bi-file-earmark-check me-2 text-success"></i>
+                      <span>Review Questions</span>
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider my-1"></li>
+                  <li>
+                    <a class="dropdown-item py-1.5 d-flex align-items-center text-danger" href="{% url 'teacher_quiz_delete' q.pk %}">
+                      <i class="bi bi-trash me-2"></i>
+                      <span>Delete</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-5 small">
+            <i class="bi bi-sliders2-vertical fs-2 d-block mb-2 opacity-50 text-secondary"></i>
+            No MCQ tests configured yet. <br>
+            <a href="{% url 'teacher_quiz_select_batch' %}" class="fw-semibold text-primary mt-1 d-inline-block">Configure your first test →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

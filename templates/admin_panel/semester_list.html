@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block title %}Semesters — Noteforge{% endblock %}
+{% block topbar_title %}Department Semesters{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Academic Semesters</h4>
+    <p class="text-secondary small mb-0">Select a department to view and configure semester blocks</p>
+  </div>
+</div>
+
+<!-- Department selector -->
+<div class="card bg-white p-3 mb-4">
+  <form method="get" class="row g-2 align-items-center">
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-building"></i></label>
+        <select name="dept" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+          <option value="">— Select a Department —</option>
+          {% for d in departments %}
+          <option value="{{ d.pk }}" {% if selected_dept and selected_dept.pk == d.pk %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% if not selected_dept %}
+<div class="card bg-white text-center p-5">
+  <div class="text-muted mb-2"><i class="bi bi-calendar3 fs-1 opacity-50"></i></div>
+  <h6 class="fw-bold text-dark mb-1">Select a Department</h6>
+  <p class="text-secondary small mb-0">Please select an academic department above to view its semester layout.</p>
+</div>
+{% else %}
+<div class="card bg-white">
+  <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-calendar-event text-primary me-2"></i>Semesters — {{ selected_dept.name }}</h6>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSemesterModal">
+      <i class="bi bi-plus-lg me-1"></i>Add Semesters
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Semester</th>
+          <th>Configured Subjects</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in semesters %}
+        <tr>
+          <td><strong class="text-dark">Semester {{ s.number }}</strong></td>
+          <td><span class="badge bg-primary-subtle text-primary">{{ s.subject_count }} Subject{{ s.subject_count|pluralize }}</span></td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-1">
+              <a href="{% url 'subject_list' %}?dept={{ selected_dept.pk }}&sem={{ s.pk }}" class="btn btn-sm btn-light border text-dark px-2.5 py-1" style="font-size: 11.5px;">View Subjects</a>
+              <button type="button" class="btn btn-sm btn-light border text-danger px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#deleteModal" data-name="Semester {{ s.number }} ({{ selected_dept.name }})" data-url="{% url 'semester_delete' s.pk %}">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="text-center text-muted py-4 small">No semesters configured yet. <button type="button" class="btn btn-link p-0 text-decoration-none small" data-bs-toggle="modal" data-bs-target="#addSemesterModal">Add semesters →</button></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Semester Modal -->
+<div class="modal fade" id="addSemesterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+          <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-calendar-plus fs-5" style="color: var(--nf-indigo) !important;"></i> Add Semesters
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{% url 'semester_add' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="department" value="{{ selected_dept.pk }}">
+          <div class="mb-3 text-start">
+            <label class="form-label fw-semibold text-dark small">Department</label>
+            <input type="text" class="form-control" value="{{ selected_dept.name }}" disabled>
+          </div>
+          <div class="mb-4 text-start">
+            <label class="form-label fw-semibold text-dark small">Total Semesters to Provision</label>
+            <input type="number" name="total_semesters" class="form-control" placeholder="e.g. 6 or 8" min="1" max="20" required>
+            <div class="form-text small">Generates missing semester blocks up to this number.</div>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">Generate Semesters</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Delete "<span id="deleteObjectName"></span>"?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Are you sure you want to permanently delete this item? This action cannot be undone and all associated records will be removed.
+        </p>
+
+        <form method="post" id="deleteForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-danger btn-pill px-4 py-2 fw-semibold">Yes, Delete</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+      deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        document.getElementById('deleteObjectName').textContent = button.getAttribute('data-name');
+        document.getElementById('deleteForm').action = button.getAttribute('data-url');
+      });
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}
+

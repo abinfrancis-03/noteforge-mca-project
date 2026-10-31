@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% block title %}AI Quiz Generator — Noteforge{% endblock %}
+{% block topbar_title %}AI Quiz Synthesis Workspace{% endblock %}
+
+{% block content %}
+{% if step == 'configure' %}
+<!-- ============================================================ -->
+<!-- STEP 1: QUIZ CONFIGURATION BOX                               -->
+<!-- ============================================================ -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">AI Quiz Configuration</h4>
+    <p class="text-secondary small mb-0">Configure settings to generate AI questions for <strong>{{ material.title }}</strong></p>
+  </div>
+  <a href="{% url 'teacher_material_list' %}" class="btn btn-sm btn-light border rounded-pill px-3">
+    <i class="bi bi-arrow-left me-1"></i>Back to Materials
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7 col-md-9">
+    <div class="card bg-white shadow-sm border-0 rounded-4 overflow-hidden" style="border: 1px solid #eef2f6 !important;">
+      <div class="card-header bg-white py-3.5 px-4 border-bottom d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2.5">
+          <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #eef2ff; color: var(--nf-indigo, #4f46e5);">
+            <i class="bi bi-gear-fill fs-5"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-dark mb-0" style="font-size: 15px;">Quiz Configuration</h6>
+            <small class="text-secondary" style="font-size: 12px;">Define parameters before generating questions</small>
+          </div>
+        </div>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 font-monospace" style="font-size: 11.5px;">
+          {{ material.subject.subject_code }}
+        </span>
+      </div>
+
+      <div class="card-body p-4 p-md-4.5">
+        <!-- Target Info Notice -->
+        <div class="p-3 rounded-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+          <div class="d-flex align-items-center gap-2.5">
+            <div class="rounded-2 d-flex align-items-center justify-content-center bg-white border" style="width: 36px; height: 36px;">
+              <i class="bi bi-file-earmark-text text-primary fs-5"></i>
+            </div>
+            <div>
+              <div class="fw-bold text-dark small">{{ material.title }}</div>
+              <small class="text-muted" style="font-size: 11.5px;">{{ material.subject.name }} &bull; Semester {{ material.subject.semester.number }}</small>
+            </div>
+          </div>
+          {% if target_batch %}
+          <div class="text-md-end">
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11px;">
+              <i class="bi bi-people-fill me-1"></i>Active Batch: {{ target_batch.name }}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="generate">
+
+          <div class="mb-3.5">
+            <label class="form-label small fw-semibold text-dark">Quiz Title *</label>
+            <input type="text" name="title" value="{{ title }}" class="form-control form-control-lg rounded-3" style="font-size: 14px;" placeholder="e.g. AI Quiz: Module 1" required>
+            <div class="form-text text-muted small" style="font-size: 11.5px;">Name of the assessment test visible to students.</div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-dark">Time Limit (Minutes) *</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-clock"></i></span>
+                <input type="number" name="time_limit_mins" value="{{ time_limit_mins }}" min="1" max="180" class="form-control border-start-0" required>
+              </div>
+              <div class="form-text text-muted small" style="font-size: 11.5px;">Total duration allowed for students to complete.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-dark">No. of Questions *</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-list-check"></i></span>
+                <input type="number" name="num_questions" value="{{ num_questions }}" min="1" max="30" class="form-control border-start-0" required>
+              </div>
+              <div class="form-text text-muted small" style="font-size: 11.5px;">E.g. enter 5, 10, or 15 questions to extract.</div>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-end gap-2 pt-2 border-top">
+            <a href="{% url 'teacher_material_list' %}" class="btn btn-light border rounded-pill px-4" style="font-size: 13px;">Cancel</a>
+            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm d-inline-flex align-items-center gap-2" style="font-size: 13px;">
+              <i class="bi bi-stars"></i>
+              <span>Generate Questions →</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- ============================================================ -->
+<!-- STEP 2: QUESTIONS & ANSWERS PREVIEW & PUBLISH OPTION         -->
+<!-- ============================================================ -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Review Questions &amp; Publish</h4>
+    <p class="text-secondary small mb-0">
+      Generated <strong>{{ generated_questions|length }} MCQs</strong> for <strong>{{ title }}</strong> from <em>{{ material.title }}</em>
+    </p>
+  </div>
+  <a href="{% url 'teacher_ai_quiz_generate' material.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+    <i class="bi bi-arrow-left me-1"></i>Back to Configuration
+  </a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save">
+  <input type="hidden" name="title" value="{{ title }}">
+  <input type="hidden" name="time_limit_mins" value="{{ time_limit_mins }}">
+
+  <!-- Top Configuration Summary Bar with Publish Switch -->
+  <div class="card bg-white shadow-sm border-0 rounded-4 mb-4 p-3.5" style="border: 1px solid #eef2f6 !important;">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 font-monospace" style="font-size: 11.5px;">
+          {{ material.subject.subject_code }}
+        </span>
+        <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1" style="font-size: 12px;">
+          <i class="bi bi-clock me-1 text-primary"></i>{{ time_limit_mins }}m Duration
+        </span>
+        <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1" style="font-size: 12px;">
+          <i class="bi bi-list-check me-1 text-primary"></i>{{ generated_questions|length }} Questions
+        </span>
+        {% if target_batch %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1" style="font-size: 12px;">
+          <i class="bi bi-people-fill me-1"></i>Target: {{ target_batch.name }}
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Publish Option -->
+      <div class="form-check form-switch m-0 d-flex align-items-center gap-2 bg-light px-3 py-1.5 rounded-pill border">
+        <input class="form-check-input ms-0 me-2" type="checkbox" name="is_published" id="is_published" checked style="width: 2.2em; height: 1.2em; cursor: pointer;">
+        <label class="form-check-label fw-bold text-dark small" for="is_published" style="cursor: pointer;">
+          Publish Quiz immediately to students
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Questions and Answers List -->
+  <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+    <span>Questions &amp; Options</span>
+    <span class="badge bg-light text-secondary border rounded-pill">{{ generated_questions|length }} MCQs</span>
+  </h6>
+
+  {% for q in generated_questions %}
+  <div class="card bg-white shadow-sm border-0 rounded-3 mb-3.5" style="border: 1px solid #eef2f6 !important;">
+    <div class="card-header bg-light bg-opacity-50 d-flex align-items-center justify-content-between py-2.5 px-3.5 border-bottom">
+      <strong class="text-dark small"><i class="bi bi-question-circle-fill text-primary me-1.5"></i>Question {{ forloop.counter }} of {{ generated_questions|length }}</strong>
+      <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5" style="font-size: 11px;">1 Mark</span>
+    </div>
+    <div class="card-body p-3.5 p-md-4">
+      <div class="mb-3">
+        <label class="form-label small fw-semibold text-dark">Question Text</label>
+        <textarea name="q_text_{{ forloop.counter0 }}" rows="2" class="form-control" required>{{ q.question }}</textarea>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Option A</label>
+          <input type="text" name="q_opt_a_{{ forloop.counter0 }}" value="{{ q.option_a }}" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Option B</label>
+          <input type="text" name="q_opt_b_{{ forloop.counter0 }}" value="{{ q.option_b }}" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Option C</label>
+          <input type="text" name="q_opt_c_{{ forloop.counter0 }}" value="{{ q.option_c }}" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Option D</label>
+          <input type="text" name="q_opt_d_{{ forloop.counter0 }}" value="{{ q.option_d }}" class="form-control form-control-sm" required>
+        </div>
+      </div>
+
+      <div class="row g-3 align-items-center">
+        <div class="col-md-4 col-sm-6">
+          <label class="form-label small fw-semibold text-dark">Correct Choice</label>
+          <select name="q_correct_{{ forloop.counter0 }}" class="form-select form-select-sm fw-semibold text-primary">
+            <option value="A" {% if q.correct_option == 'A' %}selected{% endif %}>Option A (Correct)</option>
+            <option value="B" {% if q.correct_option == 'B' %}selected{% endif %}>Option B (Correct)</option>
+            <option value="C" {% if q.correct_option == 'C' %}selected{% endif %}>Option C (Correct)</option>
+            <option value="D" {% if q.correct_option == 'D' %}selected{% endif %}>Option D (Correct)</option>
+          </select>
+        </div>
+        <div class="col-md-8 col-sm-6">
+          <label class="form-label small fw-semibold text-dark">Learning Explanation (For Students)</label>
+          <input type="text" name="q_expl_{{ forloop.counter0 }}" value="{{ q.explanation }}" class="form-control form-control-sm text-secondary" placeholder="Helpful concept explanation shown after quiz submission">
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Bottom Actions -->
+  <div class="card bg-white shadow-sm border-0 rounded-4 p-3.5 mb-5 d-flex flex-row align-items-center justify-content-between" style="border: 1px solid #eef2f6 !important;">
+    <a href="{% url 'teacher_ai_quiz_generate' material.pk %}" class="btn btn-light border rounded-pill px-4" style="font-size: 13px;">
+      <i class="bi bi-arrow-left me-1"></i>Back to Configuration
+    </a>
+    <button type="submit" class="btn btn-primary rounded-pill px-4.5 py-2 fw-semibold shadow-sm d-inline-flex align-items-center gap-2" style="font-size: 13.5px;">
+      <i class="bi bi-check2-circle fs-5"></i>
+      <span>Save &amp; Deploy AI Quiz</span>
+    </button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

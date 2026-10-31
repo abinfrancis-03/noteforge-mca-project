@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% block title %}Quiz Results: {{ quiz.title }} — Noteforge{% endblock %}
+{% block topbar_title %}Quiz Results{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Quiz Performance & Detailed Review</h4>
+    <p class="text-secondary small mb-0">Completed on {{ attempt.completed_at|date:"d M Y, H:i" }}</p>
+  </div>
+  <a href="{% url 'student_quiz_list' %}" class="btn btn-sm btn-light border rounded-pill px-3">
+    <i class="bi bi-arrow-left me-1"></i> Back to Quizzes
+  </a>
+</div>
+
+<!-- Score Header Card -->
+<div class="card bg-white shadow-sm border-0 rounded-3 mb-4 overflow-hidden" style="border: 1px solid #eef2f6 !important; border-top: 5px solid {% if attempt.percentage >= 75 %}#10b981{% elif attempt.percentage >= 50 %}#4f46e5{% else %}#ef4444{% endif %} !important; border-radius: 12px;">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold">
+            {{ quiz.subject.subject_code }} — {{ quiz.subject.name }}
+          </span>
+          <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1">
+            Attempt #{{ attempt.attempt_number }}
+          </span>
+        </div>
+        <h4 class="fw-bold text-dark mb-1">{{ quiz.title }}</h4>
+        <p class="text-secondary small mb-0"><i class="bi bi-clock me-1"></i>Time Taken: {{ time_formatted }}</p>
+      </div>
+
+      <div class="text-end bg-light p-3.5 rounded-3 border px-4" style="min-width: 180px;">
+        <div class="text-uppercase text-muted fw-bold small" style="font-size: 0.65rem; letter-spacing: 0.5px;">Your Final Score</div>
+        <div class="fw-bold fs-2 {% if attempt.percentage >= 75 %}text-success{% elif attempt.percentage >= 50 %}text-primary{% else %}text-danger{% endif %}">
+          {{ attempt.score }} / {{ attempt.total_questions }}
+        </div>
+        <div class="badge {% if attempt.percentage >= 75 %}bg-success-subtle text-success border border-success-subtle{% elif attempt.percentage >= 50 %}bg-primary-subtle text-primary border border-primary-subtle{% else %}bg-danger-subtle text-danger border border-danger-subtle{% endif %} rounded-pill px-2.5 py-1 fw-semibold mt-1">
+          {{ attempt.percentage }}% Accuracy
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phase 14: Topic-wise Learning Analytics -->
+{% if topic_analysis and topic_analysis.topics %}
+<div class="card bg-white shadow-sm border-0 rounded-3 mb-4 overflow-hidden" style="border: 1px solid #eef2f6 !important; border-radius: 12px;">
+  <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-1.5" style="font-size: 14.5px;">
+        <i class="bi bi-bar-chart-fill text-primary"></i> Topic-wise Learning Analytics
+      </h6>
+      <p class="text-secondary small mb-0">Cognitive mastery breakdown across assessed syllabus topics</p>
+    </div>
+    <div>
+      {% if topic_analysis.weak_topics_count > 0 %}
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 fw-semibold">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ topic_analysis.weak_topics_count }} Weak Topic{{ topic_analysis.weak_topics_count|pluralize }} Requiring Revision
+        </span>
+      {% else %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold">
+          <i class="bi bi-check-circle-fill me-1"></i>All Assessed Topics Proficient (≥ 60%)
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-body p-4">
+    <!-- Topic Performance List -->
+    <div class="d-flex flex-column gap-3 mb-4">
+      {% for t in topic_analysis.topics %}
+      <div class="p-3 rounded-3 border d-flex justify-content-between align-items-center flex-wrap gap-3" style="background: {% if t.is_weak %}#fff8f8; border-color: #fca5a5 !important;{% else %}#ffffff; border-color: #e2e8f0 !important;{% endif %}">
+        <div style="min-width: 200px; flex: 1;">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="fw-bold text-dark fs-6">{{ t.topic }}</span>
+            {% if t.is_weak %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5" style="font-size: 11px;">Weak (Needs Revision)</span>
+            {% elif t.percentage >= 80 %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5" style="font-size: 11px;">Mastered</span>
+            {% else %}
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5" style="font-size: 11px;">Proficient</span>
+            {% endif %}
+          </div>
+          <small class="text-muted d-block mt-1">
+            {{ t.correct_count }} of {{ t.total_questions }} correct ({{ t.marks_obtained }}/{{ t.total_marks }} marks)
+          </small>
+        </div>
+
+        <div class="d-flex align-items-center gap-3 justify-content-end flex-wrap" style="min-width: 260px;">
+          <div class="progress flex-grow-1" style="max-width: 140px; height: 8px; background-color: #e2e8f0;">
+            <div class="progress-bar {% if t.is_weak %}bg-danger{% elif t.percentage >= 80 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ t.percentage }}%;" aria-valuenow="{{ t.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div class="fw-bold fs-6 text-end {% if t.is_weak %}text-danger{% elif t.percentage >= 80 %}text-success{% else %}text-primary{% endif %}" style="min-width: 50px;">
+            {{ t.percentage }}%
+          </div>
+          {% if t.is_weak %}
+            <a href="{% url 'student_generate_practice' quiz.pk %}?topic={{ t.topic|urlencode }}" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold" style="font-size: 11.5px;" title="Adaptive RAG practice focusing on Understand & Apply">
+              <i class="bi bi-lightning-charge-fill me-1"></i>Practice Weak Topic
+            </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Recommendations & Revision Actions -->
+    {% if topic_analysis.recommendations %}
+    <div class="bg-light p-4 rounded-3 border-start border-4 {% if topic_analysis.weak_topics_count > 0 %}border-danger{% else %}border-primary{% endif %}">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-1.5">
+          <i class="bi bi-bullseye text-primary"></i> Recommended Revision Plan
+        </h6>
+        {% if topic_analysis.weak_topics %}
+          <a href="{% url 'student_generate_practice' quiz.pk %}?topic={{ topic_analysis.weak_topics.0|urlencode }}" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold" style="font-size: 12px;">
+            <i class="bi bi-lightning-charge-fill me-1"></i>Start Adaptive Practice Test
+          </a>
+        {% endif %}
+      </div>
+      
+      <p class="text-secondary small mb-3" style="line-height: 1.6;">
+        {{ topic_analysis.recommendations.overall_assessment }}
+      </p>
+
+      {% if topic_analysis.recommendations.weak_topics_identified %}
+      <div class="d-flex flex-column gap-2 mb-3">
+        {% for w in topic_analysis.recommendations.weak_topics_identified %}
+        <div class="bg-white p-3 rounded-3 border">
+          <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
+            <strong class="text-danger small">{{ w.topic }} ({{ w.accuracy }}%)</strong>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill" style="font-size: 10.5px;">Priority: {{ w.priority|default:"High" }}</span>
+              <a href="{% url 'student_generate_practice' quiz.pk %}?topic={{ w.topic|urlencode }}" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5" style="font-size: 11px;">
+                ⚡ Practice {{ w.topic }}
+              </a>
+            </div>
+          </div>
+          <p class="text-secondary small mb-1">
+            {{ w.revision_guidance }}
+          </p>
+          {% if w.concepts_to_review %}
+          <small class="text-muted d-block">
+            <strong>Key concepts to review:</strong> {{ w.concepts_to_review|join:", " }}
+          </small>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if topic_analysis.recommendations.recommended_revision_actions %}
+      <div class="mt-3">
+        <strong class="text-dark small d-block mb-1">Actionable Study Checklist:</strong>
+        <ul class="mb-0 text-secondary small ps-3" style="line-height: 1.6;">
+          {% for action in topic_analysis.recommendations.recommended_revision_actions %}
+            <li>{{ action }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <div class="text-muted small mt-3 pt-2 border-top border-secondary border-opacity-25" style="font-size: 0.75rem;">
+        <i class="bi bi-info-circle me-1"></i><em>Objective learning guidance derived strictly from question topic metadata and source materials without personal or psychological judgments.</em>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Question Breakdown & Answer Review -->
+<h5 class="fw-bold text-dark mb-3">Question Breakdown & Answer Review</h5>
+
+{% for q_id, q in answers.items %}
+<div class="card bg-white shadow-sm border-0 rounded-3 mb-3 overflow-hidden" style="border: 1px solid #eef2f6 !important; border-left: 4px solid {% if q.is_correct %}#10b981{% else %}#ef4444{% endif %} !important; border-radius: 12px;">
+  <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <h6 class="fw-bold text-dark mb-0" style="font-size: 14px;">
+        Question {{ forloop.counter }}
+      </h6>
+      {% if q.topic %}
+        <span class="badge bg-light text-secondary border rounded-pill" style="font-size: 11px;">{{ q.topic }}</span>
+      {% endif %}
+      {% if q.blooms_level %}
+        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill" style="font-size: 11px;">{{ q.blooms_level }}</span>
+      {% endif %}
+    </div>
+    {% if q.is_correct %}
+      <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold">
+        <i class="bi bi-check-lg me-1"></i>Correct (+1 Mark)
+      </span>
+    {% else %}
+      <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 fw-semibold">
+        <i class="bi bi-x-lg me-1"></i>Incorrect (0 Marks)
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="card-body p-4">
+    <p class="fw-medium text-dark mb-3 fs-6">
+      {{ q.question_text }}
+    </p>
+
+    <div class="row g-2 mb-3">
+      <div class="col-md-6">
+        <div class="p-2.5 px-3 rounded-3 border small {% if q.chosen_option == 'A' and q.is_correct %}bg-success-subtle border-success text-success-emphasis fw-semibold{% elif q.chosen_option == 'A' and not q.is_correct %}bg-danger-subtle border-danger text-danger-emphasis fw-semibold{% elif q.correct_option == 'A' %}bg-success-subtle border-success text-success-emphasis fw-semibold{% else %}bg-white border-slate-200 text-dark{% endif %}">
+          <strong>A)</strong> {{ q.option_a }}
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="p-2.5 px-3 rounded-3 border small {% if q.chosen_option == 'B' and q.is_correct %}bg-success-subtle border-success text-success-emphasis fw-semibold{% elif q.chosen_option == 'B' and not q.is_correct %}bg-danger-subtle border-danger text-danger-emphasis fw-semibold{% elif q.correct_option == 'B' %}bg-success-subtle border-success text-success-emphasis fw-semibold{% else %}bg-white border-slate-200 text-dark{% endif %}">
+          <strong>B)</strong> {{ q.option_b }}
+        </div>
+      </div>
+
+      {% if q.option_c %}
+      <div class="col-md-6">
+        <div class="p-2.5 px-3 rounded-3 border small {% if q.chosen_option == 'C' and q.is_correct %}bg-success-subtle border-success text-success-emphasis fw-semibold{% elif q.chosen_option == 'C' and not q.is_correct %}bg-danger-subtle border-danger text-danger-emphasis fw-semibold{% elif q.correct_option == 'C' %}bg-success-subtle border-success text-success-emphasis fw-semibold{% else %}bg-white border-slate-200 text-dark{% endif %}">
+          <strong>C)</strong> {{ q.option_c }}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if q.option_d %}
+      <div class="col-md-6">
+        <div class="p-2.5 px-3 rounded-3 border small {% if q.chosen_option == 'D' and q.is_correct %}bg-success-subtle border-success text-success-emphasis fw-semibold{% elif q.chosen_option == 'D' and not q.is_correct %}bg-danger-subtle border-danger text-danger-emphasis fw-semibold{% elif q.correct_option == 'D' %}bg-success-subtle border-success text-success-emphasis fw-semibold{% else %}bg-white border-slate-200 text-dark{% endif %}">
+          <strong>D)</strong> {{ q.option_d }}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="p-2.5 px-3 rounded-3 bg-light border d-flex gap-3 flex-wrap small">
+      <span>Your Answer: <strong class="{% if q.is_correct %}text-success{% else %}text-danger{% endif %}">Option {{ q.chosen_option|default:"None" }}</strong></span>
+      <span>Correct Answer: <strong class="text-success">Option {{ q.correct_option }}</strong></span>
+    </div>
+
+    {% if q.explanation %}
+    <div class="mt-2.5 p-3 rounded-3 bg-primary-subtle bg-opacity-25 border-start border-3 border-primary small text-primary-emphasis">
+      <strong>Ground-truth Explanation:</strong> {{ q.explanation }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="d-flex align-items-center gap-2 mt-4 mb-5">
+  <a href="{% url 'student_quiz_take' quiz.pk %}" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm">
+    <i class="bi bi-arrow-repeat me-1"></i> Retake Quiz
+  </a>
+  <a href="{% url 'student_quiz_list' %}" class="btn btn-light border rounded-pill px-4">
+    Back to Quizzes List
+  </a>
+</div>
+{% endblock %}

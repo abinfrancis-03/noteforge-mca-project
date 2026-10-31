@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Confirm Delete — Noteforge{% endblock %}
+{% block topbar_title %}Confirm Deletion{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+  <div class="col-md-6 col-lg-5">
+    <div class="card bg-white p-4 p-md-5 shadow-sm border-0 rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="btn-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3" style="width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+        <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+      </div>
+      <h5 class="fw-bold text-dark mb-2">Delete {{ object_type|default:"Item" }}?</h5>
+      <p class="text-secondary small mb-4">
+        Are you sure you want to delete <strong class="text-dark">"{{ object_name }}"</strong>? This action cannot be reversed.
+      </p>
+      <form method="post" class="d-flex align-items-center justify-content-center gap-2">
+        {% csrf_token %}
+        <a href="{% url cancel_url %}" class="btn btn-light border rounded-pill px-4" style="font-size: 13px;">Cancel</a>
+        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold shadow-sm" style="font-size: 13px;">
+          <i class="bi bi-trash me-1"></i>Yes, Delete
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

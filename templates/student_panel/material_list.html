@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}Course Materials — Noteforge{% endblock %}
+{% block topbar_title %}Course Study Materials{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Course Study Materials</h4>
+    <p class="text-secondary small mb-0">Browse official lecture materials uploaded by your course faculty for Semester {{ viewing_sem.number|default:current_sem.number }}</p>
+  </div>
+</div>
+
+<!-- Semester Archive & Selection Tabs -->
+{% if available_semesters|length > 1 %}
+<div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+  <span class="small fw-semibold text-muted me-1"><i class="bi bi-clock-history me-1"></i>Academic Term:</span>
+  {% for sem in available_semesters %}
+    {% if sem.pk == current_sem.pk %}
+      <a href="{% url 'student_material_list' %}?sem={{ sem.pk }}" class="btn btn-sm {% if viewing_sem.pk == sem.pk %}btn-primary{% else %}btn-outline-primary{% endif %} rounded-pill px-3 fw-semibold">
+        Semester {{ sem.number }} <span class="badge {% if viewing_sem.pk == sem.pk %}bg-white text-primary{% else %}bg-primary text-white{% endif %} ms-1" style="font-size: 0.65rem;">Current</span>
+      </a>
+    {% else %}
+      <a href="{% url 'student_material_list' %}?sem={{ sem.pk }}" class="btn btn-sm {% if viewing_sem.pk == sem.pk %}btn-secondary text-white{% else %}btn-light border text-secondary{% endif %} rounded-pill px-3 fw-semibold">
+        <i class="bi bi-archive me-1"></i>Semester {{ sem.number }} (Archive)
+      </a>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if is_archived %}
+<div class="alert alert-warning-subtle border border-warning-subtle text-warning-emphasis d-flex align-items-center gap-2 py-2.5 px-3 rounded-3 mb-3 small">
+  <i class="bi bi-info-circle-fill fs-5"></i>
+  <div>
+    <strong>Semester {{ viewing_sem.number }} Archive:</strong> You are browsing course materials from your previous semester for revision and reference.
+    <a href="{% url 'student_material_list' %}" class="fw-bold text-decoration-underline ms-2 text-warning-emphasis">Return to Current Semester {{ current_sem.number }} →</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Search & Filter Bar -->
+<div class="card bg-white p-3 mb-4">
+  <form method="get" class="row g-2 align-items-center">
+    {% if viewing_sem %}
+    <input type="hidden" name="sem" value="{{ viewing_sem.pk }}">
+    {% endif %}
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-funnel"></i></label>
+        <select name="sub" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+          <option value="">— All Semester {{ viewing_sem.number|default:current_sem.number }} Subjects —</option>
+          {% for s in subjects %}
+          <option value="{{ s.pk }}" {% if selected_sub and selected_sub.pk == s.pk %}selected{% endif %}>{{ s.subject_code }} — {{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% if selected_sub %}
+    <div class="col-auto">
+      <a href="{% url 'student_material_list' %}{% if viewing_sem %}?sem={{ viewing_sem.pk }}{% endif %}" class="btn btn-sm btn-light border"><i class="bi bi-x-circle me-1"></i>Clear Filter</a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Materials Table -->
+<div class="card bg-white">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Title & Description</th>
+          <th>Subject</th>
+          <th>Faculty</th>
+          <th>Uploaded Date</th>
+          <th class="text-end">AI Study Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mat in materials %}
+        <tr>
+          <td>
+            <div class="fw-semibold text-dark">{{ mat.title }}</div>
+            {% if mat.description %}
+              <small class="text-muted d-block">{{ mat.description }}</small>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-primary-subtle text-primary">{{ mat.subject.subject_code }}</span>
+            <small class="d-block text-secondary mt-0.5" style="font-size: 0.75rem;">{{ mat.subject.name }}</small>
+          </td>
+          <td class="small">
+            {{ mat.uploaded_by.get_full_name|default:mat.uploaded_by.username }}
+          </td>
+          <td class="small text-muted">
+            {{ mat.created_at|date:"d M Y, H:i" }}
+          </td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-1 flex-wrap justify-content-end">
+              {% if mat.file %}
+                <a href="{% url 'student_download_material' mat.pk %}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i> PDF</a>
+              {% elif mat.external_link %}
+                <a href="{% url 'student_download_material' mat.pk %}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i> Link</a>
+              {% endif %}
+              <a href="{% url 'student_document_summarize' mat.pk %}" class="btn btn-sm btn-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-magic me-1"></i>AI Summary</a>
+              <a href="{% url 'student_mindmap_generator' mat.pk %}" class="btn btn-sm btn-light border"><i class="bi bi-diagram-2 me-1"></i>Mind-Map</a>
+              <a href="{% url 'student_subject_chatbot' mat.subject.pk %}" class="btn btn-sm btn-info-subtle text-info-emphasis border border-info-subtle"><i class="bi bi-chat-quote me-1"></i>Tutor</a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-5 small">No study materials found matching your subject selection.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

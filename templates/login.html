@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — Noteforge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  :root {
+    --nf-indigo: #4f46e5;
+    --nf-indigo-hover: #4338ca;
+    --nf-indigo-light: #eef2ff;
+    --nf-slate-900: #0f172a;
+    --nf-slate-700: #334155;
+    --nf-slate-500: #64748b;
+    --nf-slate-400: #94a3b8;
+    --nf-slate-200: #e2e8f0;
+    --nf-slate-100: #f1f5f9;
+    --nf-bg: #f8fafc;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--nf-bg);
+    background-image: 
+      radial-gradient(at 50% 0%, rgba(79, 70, 229, 0.07) 0px, transparent 55%),
+      radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.04) 0px, transparent 40%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    color: var(--nf-slate-900);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .login-container {
+    width: 100%;
+    max-width: 410px;
+  }
+
+  .login-card {
+    background: #ffffff;
+    border: 1px solid var(--nf-slate-200);
+    border-radius: 18px;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.03), 
+                0 16px 32px -8px rgba(15, 23, 42, 0.06);
+    padding: 2.25rem;
+    transition: box-shadow 0.25s ease;
+  }
+
+  @media (min-width: 576px) {
+    .login-card {
+      padding: 2.75rem 2.5rem;
+    }
+  }
+
+  .brand-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 1.35rem;
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
+    margin-bottom: 1.25rem;
+  }
+
+  .brand-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--nf-slate-900);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.35rem;
+  }
+
+  .brand-subtitle {
+    font-size: 0.875rem;
+    color: var(--nf-slate-500);
+    margin-bottom: 0;
+  }
+
+  .form-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--nf-slate-700);
+    margin-bottom: 0.45rem;
+  }
+
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .input-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--nf-slate-400);
+    font-size: 1rem;
+    pointer-events: none;
+    transition: color 0.15s ease;
+  }
+
+  .form-control-minimal {
+    width: 100%;
+    height: 44px;
+    padding: 0.5rem 0.875rem 0.5rem 2.55rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--nf-slate-900);
+    background-color: #ffffff;
+    border: 1px solid var(--nf-slate-200);
+    border-radius: 10px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .form-control-minimal::placeholder {
+    color: var(--nf-slate-400);
+    font-weight: 400;
+  }
+
+  .form-control-minimal:focus {
+    outline: none;
+    border-color: var(--nf-indigo);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  }
+
+  .input-wrapper:focus-within .input-icon {
+    color: var(--nf-indigo);
+  }
+
+  .password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--nf-slate-400);
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    transition: color 0.15s ease;
+  }
+
+  .password-toggle-btn:hover {
+    color: var(--nf-slate-700);
+  }
+
+  .password-toggle-btn:focus-visible {
+    outline: 2px solid var(--nf-indigo);
+  }
+
+  .btn-submit {
+    height: 44px;
+    background-color: var(--nf-indigo);
+    border: 1px solid var(--nf-indigo);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: 10px;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+  }
+
+  .btn-submit:hover {
+    background-color: var(--nf-indigo-hover);
+    border-color: var(--nf-indigo-hover);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .btn-submit:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+  }
+
+  .auth-footer {
+    text-align: center;
+    margin-top: 1.75rem;
+    font-size: 0.775rem;
+    color: var(--nf-slate-400);
+  }
+</style>
+</head>
+<body>
+
+<main class="login-container">
+  <div class="login-card">
+    <div class="text-center mb-4">
+      <div class="brand-logo">
+        <i class="bi bi-mortarboard-fill"></i>
+      </div>
+      <h1 class="brand-title">Welcome to Noteforge</h1>
+      <p class="brand-subtitle">Sign in to your academic workspace</p>
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-dismissible fade show rounded-3 py-2 px-3 mb-3 small d-flex align-items-center gap-2 border-0" role="alert" style="background-color: {% if message.tags == 'success' %}#f0fdf4{% elif message.tags == 'warning' %}#fffbeb{% elif message.tags == 'info' %}#eff6ff{% else %}#fef2f2{% endif %}; color: {% if message.tags == 'success' %}#166534{% elif message.tags == 'warning' %}#92400e{% elif message.tags == 'info' %}#1e40af{% else %}#991b1b{% endif %};">
+          <i class="bi {% if message.tags == 'success' %}bi-check-circle-fill{% elif message.tags == 'warning' %}bi-exclamation-triangle-fill{% elif message.tags == 'info' %}bi-info-circle-fill{% else %}bi-exclamation-circle-fill{% endif %} fs-6 flex-shrink-0"></i>
+          <div class="flex-grow-1">{{ message }}</div>
+          <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="username" class="form-label">Username / Register No</label>
+        <div class="input-wrapper">
+          <i class="bi bi-person input-icon"></i>
+          <input 
+            type="text" 
+            class="form-control-minimal" 
+            id="username" 
+            name="username" 
+            placeholder="Username or Register No" 
+            required 
+            autofocus 
+            autocomplete="username"
+          >
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label for="password" class="form-label">Password</label>
+        <div class="input-wrapper">
+          <i class="bi bi-lock input-icon"></i>
+          <input 
+            type="password" 
+            class="form-control-minimal" 
+            id="password" 
+            name="password" 
+            placeholder="Enter your password" 
+            required 
+            autocomplete="current-password"
+            style="padding-right: 2.5rem;"
+          >
+          <button 
+            type="button" 
+            class="password-toggle-btn" 
+            id="togglePassword" 
+            aria-label="Toggle password visibility"
+            tabindex="-1"
+          >
+            <i class="bi bi-eye" id="toggleIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">
+        <span>Sign in</span>
+        <i class="bi bi-arrow-right"></i>
+      </button>
+    </form>
+  </div>
+
+  <footer class="auth-footer">
+    <span>Noteforge Academic Platform &bull; Secure Portal</span>
+  </footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function () {
+    const toggleBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+
+    if (toggleBtn && passwordInput && toggleIcon) {
+      toggleBtn.addEventListener('click', function () {
+        const isPassword = passwordInput.getAttribute('type') === 'password';
+        passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+        toggleIcon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+      });
+    }
+  })();
+</script>
+</body>
+</html>

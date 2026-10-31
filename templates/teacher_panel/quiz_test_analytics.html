@@ -1,0 +1,710 @@
+{% extends 'base.html' %}
+{% block title %}{{ quiz.title }} — Student Analytics — Noteforge{% endblock %}
+{% block topbar_title %}Assessment Analytics Deep Dive{% endblock %}
+
+{% block content %}
+<style>
+  .kpi-card {
+    border: 1px solid #eef2f6 !important;
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 1.25rem 1.35rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  }
+  .kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+  }
+  .band-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 50px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    display: inline-block;
+  }
+  .band-mastery { background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
+  .band-proficient { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .band-average { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .band-needs_attention { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .band-unattempted { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+
+  /* Stacked Band Progress Bar */
+  .stacked-band-bar {
+    height: 8px;
+    border-radius: 50px;
+    overflow: hidden;
+    display: flex;
+    background-color: #f1f5f9;
+  }
+  .band-seg-mastery { background-color: #9333ea; }
+  .band-seg-proficient { background-color: #16a34a; }
+  .band-seg-average { background-color: #f59e0b; }
+  .band-seg-needs_attention { background-color: #ef4444; }
+
+  .band-card {
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .band-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  }
+  .band-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .filter-pill-btn {
+    border-radius: 50px;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 0.45rem 1.15rem;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .filter-pill-btn:hover {
+    border-color: var(--nf-indigo);
+    color: var(--nf-indigo);
+    background: #f8fafc;
+  }
+  .filter-pill-btn.active {
+    background: var(--nf-indigo);
+    border-color: var(--nf-indigo);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+  }
+
+  /* Roster Table Styling */
+  .roster-table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .roster-table thead th {
+    background-color: #f8fafc !important;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 18px;
+    border-top: none;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+  .roster-table tbody td {
+    padding: 16px 18px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+  }
+  .roster-table tbody tr {
+    transition: background-color 0.15s ease;
+  }
+  .roster-table tbody tr:hover {
+    background-color: #f8fafc;
+  }
+  .roster-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .student-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13.5px;
+    flex-shrink: 0;
+  }
+</style>
+
+<!-- Top Breadcrumbs & Action Bar -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <a href="{% url 'teacher_quiz_analytics' %}?sem={{ quiz.subject.semester.pk }}" class="text-decoration-none text-secondary small fw-semibold">
+        <i class="bi bi-chevron-left me-1"></i>Semester {{ quiz.subject.semester.number }} Analytics
+      </a>
+      <span class="text-muted small">&bull;</span>
+      <span class="badge bg-light text-secondary border">{{ quiz.subject.subject_code }}</span>
+    </div>
+    <h4 class="fw-bold text-dark mb-0">{{ quiz.title }} — Analytics</h4>
+  </div>
+
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{% url 'teacher_quiz_questions' quiz.pk %}" class="btn btn-outline-secondary rounded-pill px-3 py-1.5" style="font-size: 13px;">
+      <i class="bi bi-pencil-square me-1"></i>Review Questions
+    </a>
+    <a href="{% url 'teacher_quiz_analytics_export' quiz.pk %}" class="btn btn-primary rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm" style="font-size: 13px;">
+      <i class="bi bi-download"></i>
+      <span>Export Marksheet (CSV)</span>
+    </a>
+  </div>
+</div>
+
+<!-- Test Metadata Summary Banner -->
+<div class="card bg-white shadow-sm border-0 rounded-3 mb-4" style="border: 1px solid #eef2f6 !important; padding: 20px 24px;">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 48px; height: 48px; background: var(--nf-indigo);">
+        <i class="bi bi-patch-question-fill fs-5"></i>
+      </div>
+      <div>
+        <div class="fw-bold text-dark mb-1" style="font-size: 15.5px;">{{ quiz.subject.name }} ({{ quiz.subject.subject_code }})</div>
+        <div class="text-secondary small d-flex align-items-center flex-wrap gap-2">
+          <span>Semester {{ quiz.subject.semester.number }}</span>
+          <span class="text-muted">&bull;</span>
+          {% if quiz.batch %}
+            <span class="badge bg-light text-dark border">Batch: {{ quiz.batch.name }}</span>
+          {% else %}
+            <span class="badge bg-light text-secondary border">Universal (All Batches)</span>
+          {% endif %}
+          <span class="text-muted">&bull;</span>
+          <span>{{ quiz.num_questions }} Questions</span>
+          <span class="text-muted">&bull;</span>
+          <span>{{ quiz.time_limit_mins }} mins</span>
+          <span class="text-muted">&bull;</span>
+          <span>Total {{ quiz.total_marks }} Marks</span>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% if quiz.is_published %}
+        <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-semibold" style="font-size: 12px;">
+          <i class="bi bi-broadcast me-1"></i>Published to Students
+        </span>
+      {% else %}
+        <span class="badge bg-warning-subtle text-dark px-3 py-2 rounded-pill fw-semibold" style="font-size: 12px; border: 1px solid #fde68a;">
+          <i class="bi bi-pencil-square me-1"></i>Draft
+        </span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Step 1: Class Performance KPIs (5 Metric Cards) -->
+<div class="row g-3 mb-4">
+  <!-- 1. Participation -->
+  <div class="col-6 col-md-4 col-lg">
+    <div class="kpi-card h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="text-secondary small fw-semibold">Participation</span>
+        <div class="kpi-icon bg-primary-subtle text-primary" style="width:34px;height:34px;font-size:1rem;">
+          <i class="bi bi-people-fill"></i>
+        </div>
+      </div>
+      <div class="h4 fw-bold text-dark mb-0">{{ participation_rate }}%</div>
+    </div>
+  </div>
+
+  <!-- 2. Class Average -->
+  <div class="col-6 col-md-4 col-lg">
+    <div class="kpi-card h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="text-secondary small fw-semibold">Class Average</span>
+        <div class="kpi-icon bg-info-subtle text-info" style="width:34px;height:34px;font-size:1rem;">
+          <i class="bi bi-calculator"></i>
+        </div>
+      </div>
+      <div class="h4 fw-bold text-dark mb-0">{{ avg_score_pct }}%</div>
+    </div>
+  </div>
+
+  <!-- 3. Highest Score -->
+  <div class="col-6 col-md-4 col-lg">
+    <div class="kpi-card h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="text-secondary small fw-semibold">Highest Score</span>
+        <div class="kpi-icon bg-success-subtle text-success" style="width:34px;height:34px;font-size:1rem;">
+          <i class="bi bi-trophy-fill"></i>
+        </div>
+      </div>
+      <div class="h4 fw-bold text-success mb-0">{{ highest_score_pct }}%</div>
+    </div>
+  </div>
+
+  <!-- 4. Lowest Score -->
+  <div class="col-6 col-md-4 col-lg">
+    <div class="kpi-card h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="text-secondary small fw-semibold">Lowest Score</span>
+        <div class="kpi-icon bg-danger-subtle text-danger" style="width:34px;height:34px;font-size:1rem;">
+          <i class="bi bi-graph-down"></i>
+        </div>
+      </div>
+      <div class="h4 fw-bold text-dark mb-0">{{ lowest_score_pct }}%</div>
+    </div>
+  </div>
+
+  <!-- 5. Pass Rate -->
+  <div class="col-6 col-md-4 col-lg">
+    <div class="kpi-card h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="text-secondary small fw-semibold">Pass Rate</span>
+        <div class="kpi-icon bg-primary-subtle text-primary" style="width:34px;height:34px;font-size:1rem;">
+          <i class="bi bi-check2-circle"></i>
+        </div>
+      </div>
+      <div class="h4 fw-bold {% if pass_rate >= 60 %}text-success{% else %}text-danger{% endif %} mb-0">{{ pass_rate }}%</div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 2: Score Distribution & Grade Bands -->
+<div class="card bg-white shadow-sm border-0 rounded-3 p-4 mb-4" style="border: 1px solid #eef2f6 !important;">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h6 class="fw-bold text-dark mb-0" style="font-size: 14.5px;">
+        <i class="bi bi-pie-chart-fill text-primary me-1.5"></i>Score Distribution &amp; Performance Bands
+      </h6>
+      <span class="text-muted small">Academic proficiency tiers across all attempting students</span>
+    </div>
+    <span class="badge bg-light text-secondary border">{{ attempted_count }} student{{ attempted_count|pluralize }} evaluated</span>
+  </div>
+
+  {% if attempted_count > 0 %}
+  <!-- Stacked visual progress bar -->
+  <div class="stacked-band-bar mb-3" title="Grade distribution breakdown">
+    <div class="band-seg-mastery" style="width: {{ band_pcts.mastery }}%;" title="Mastery: {{ band_pcts.mastery }}%"></div>
+    <div class="band-seg-proficient" style="width: {{ band_pcts.proficient }}%;" title="Proficient: {{ band_pcts.proficient }}%"></div>
+    <div class="band-seg-average" style="width: {{ band_pcts.average }}%;" title="Average: {{ band_pcts.average }}%"></div>
+    <div class="band-seg-needs_attention" style="width: {{ band_pcts.needs_attention }}%;" title="Needs Attention: {{ band_pcts.needs_attention }}%"></div>
+  </div>
+
+  <!-- Band Summary Cards -->
+  <div class="row g-3">
+    <!-- Mastery -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="band-card h-100" style="background: #faf5ff; border: 1px solid #f3e8ff;">
+        <div class="d-flex align-items-center justify-content-between mb-2.5">
+          <div class="d-flex align-items-center gap-2">
+            <span class="band-dot" style="background: #9333ea;"></span>
+            <span class="fw-bold text-dark" style="font-size: 13.5px;">Mastery</span>
+          </div>
+          <span class="text-muted small fw-medium" style="font-size: 11.5px;">&ge;85%</span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between">
+          <div class="d-flex align-items-baseline gap-1.5">
+            <span class="h4 fw-bold mb-0" style="color: #581c87;">{{ band_counts.mastery }}</span>
+            <span class="text-secondary small" style="font-size: 12px;">student{{ band_counts.mastery|pluralize }}</span>
+          </div>
+          <span class="badge rounded-pill fw-semibold px-2.5 py-1" style="background: #ede9fe; color: #6b21a8; font-size: 11.5px;">{{ band_pcts.mastery }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proficient -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="band-card h-100" style="background: #f0fdf4; border: 1px solid #dcfce7;">
+        <div class="d-flex align-items-center justify-content-between mb-2.5">
+          <div class="d-flex align-items-center gap-2">
+            <span class="band-dot" style="background: #16a34a;"></span>
+            <span class="fw-bold text-dark" style="font-size: 13.5px;">Proficient</span>
+          </div>
+          <span class="text-muted small fw-medium" style="font-size: 11.5px;">70&ndash;84%</span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between">
+          <div class="d-flex align-items-baseline gap-1.5">
+            <span class="h4 fw-bold mb-0" style="color: #14532d;">{{ band_counts.proficient }}</span>
+            <span class="text-secondary small" style="font-size: 12px;">student{{ band_counts.proficient|pluralize }}</span>
+          </div>
+          <span class="badge rounded-pill fw-semibold px-2.5 py-1" style="background: #dcfce7; color: #15803d; font-size: 11.5px;">{{ band_pcts.proficient }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Average -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="band-card h-100" style="background: #fffbeb; border: 1px solid #fef3c7;">
+        <div class="d-flex align-items-center justify-content-between mb-2.5">
+          <div class="d-flex align-items-center gap-2">
+            <span class="band-dot" style="background: #f59e0b;"></span>
+            <span class="fw-bold text-dark" style="font-size: 13.5px;">Average</span>
+          </div>
+          <span class="text-muted small fw-medium" style="font-size: 11.5px;">50&ndash;69%</span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between">
+          <div class="d-flex align-items-baseline gap-1.5">
+            <span class="h4 fw-bold mb-0" style="color: #78350f;">{{ band_counts.average }}</span>
+            <span class="text-secondary small" style="font-size: 12px;">student{{ band_counts.average|pluralize }}</span>
+          </div>
+          <span class="badge rounded-pill fw-semibold px-2.5 py-1" style="background: #fef3c7; color: #b45309; font-size: 11.5px;">{{ band_pcts.average }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Needs Attention -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="band-card h-100" style="background: #fef2f2; border: 1px solid #fee2e2;">
+        <div class="d-flex align-items-center justify-content-between mb-2.5">
+          <div class="d-flex align-items-center gap-2">
+            <span class="band-dot" style="background: #ef4444;"></span>
+            <span class="fw-bold text-dark" style="font-size: 13.5px;">Needs Attention</span>
+          </div>
+          <span class="text-muted small fw-medium" style="font-size: 11.5px;">&lt;50%</span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between">
+          <div class="d-flex align-items-baseline gap-1.5">
+            <span class="h4 fw-bold mb-0" style="color: #7f1d1d;">{{ band_counts.needs_attention }}</span>
+            <span class="text-secondary small" style="font-size: 12px;">student{{ band_counts.needs_attention|pluralize }}</span>
+          </div>
+          <span class="badge rounded-pill fw-semibold px-2.5 py-1" style="background: #fee2e2; color: #b91c1c; font-size: 11.5px;">{{ band_pcts.needs_attention }}%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-4 text-muted small">
+    <i class="bi bi-inbox fs-3 d-block mb-1 text-secondary opacity-40"></i>
+    No attempts submitted yet. Once students take this quiz, grade bands and performance distributions will appear here.
+  </div>
+  {% endif %}
+</div>
+
+<!-- Step 5: Student Roster & Results Table -->
+<div class="card bg-white shadow-sm border-0 rounded-4 overflow-hidden mb-5" style="border: 1px solid #eef2f6 !important;">
+  <div class="card-header bg-white py-3.5 px-4 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div>
+      <h6 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2" style="font-size: 15px;">
+        <i class="bi bi-people-fill text-primary"></i>
+        <span>Student Roster &amp; Marksheet</span>
+      </h6>
+      <span class="text-muted small">Detailed record of each student's score, attempt count, and performance</span>
+    </div>
+
+    <!-- Search Box -->
+    <div class="d-flex align-items-center gap-2">
+      <div class="input-group input-group-sm" style="width: 250px;">
+        <span class="input-group-text bg-light border-end-0 text-muted ps-3 rounded-start-pill"><i class="bi bi-search"></i></span>
+        <input type="text" id="rosterSearchInput" class="form-control border-start-0 bg-light rounded-end-pill py-2" placeholder="Search student or ID..." onkeyup="filterRosterTable()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Buttons Bar -->
+  <div class="px-4 py-3 bg-light bg-opacity-40 border-bottom d-flex align-items-center gap-2 flex-wrap">
+    <button type="button" class="filter-pill-btn active" onclick="setRosterFilter('all', this)">
+      All Students ({{ roster|length }})
+    </button>
+    <button type="button" class="filter-pill-btn" onclick="setRosterFilter('attempted', this)">
+      Attempted ({{ attempted_count }})
+    </button>
+    <button type="button" class="filter-pill-btn" onclick="setRosterFilter('passed', this)">
+      Passed ({{ passed_count }})
+    </button>
+    <button type="button" class="filter-pill-btn" onclick="setRosterFilter('needs_attention', this)">
+      Needs Attention ({{ band_counts.needs_attention }})
+    </button>
+    <button type="button" class="filter-pill-btn" onclick="setRosterFilter('unattempted', this)">
+      Not Attempted ({{ unattempted_count }})
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table roster-table align-middle mb-0" id="rosterTable">
+      <thead>
+        <tr>
+          <th class="ps-4">Student</th>
+          <th class="text-center">Attempts</th>
+          <th class="text-center">Score</th>
+          <th class="text-center">Percentage</th>
+          <th class="text-center">Performance Band</th>
+          <th class="pe-4 text-end">Answer Sheet</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in roster %}
+        <tr class="roster-row"
+            data-status="{% if row.has_attempted %}attempted{% else %}unattempted{% endif %}"
+            data-passed="{% if row.passed %}passed{% else %}failed{% endif %}"
+            data-band="{{ row.band_class }}"
+            data-student-name="{{ row.student.get_full_name|lower }} {{ row.student.username|lower }} {{ row.student.employee_id|lower }}">
+          <!-- Student Info -->
+          <td class="ps-4">
+            <span class="fw-semibold text-dark" style="font-size: 13.5px;">
+              {{ row.student.get_full_name|default:row.student.username }}
+            </span>
+          </td>
+
+          <!-- Attempt Count -->
+          <td class="text-center">
+            {% if row.has_attempted %}
+              <span class="badge bg-light text-dark border px-2.5 py-1.5 rounded-pill fw-medium" style="font-size: 11.5px;">
+                {{ row.attempt_count }} attempt{{ row.attempt_count|pluralize }}
+              </span>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Score -->
+          <td class="text-center">
+            {% if row.has_attempted %}
+              <span class="fw-bold text-dark fs-6">{{ row.score }}</span>
+              <span class="text-muted small">/ {{ row.total_questions }}</span>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Percentage -->
+          <td class="text-center">
+            {% if row.has_attempted %}
+              <span class="badge {% if row.percentage >= 70 %}bg-success-subtle text-success border border-success-subtle{% elif row.percentage >= 50 %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% else %}bg-danger-subtle text-danger border border-danger-subtle{% endif %} px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 12px;">
+                {{ row.percentage }}%
+              </span>
+            {% else %}
+              <span class="badge bg-light text-muted border px-2.5 py-1 rounded-pill" style="font-size: 11px;">Not Taken</span>
+            {% endif %}
+          </td>
+
+          <!-- Band -->
+          <td class="text-center">
+            {% if row.has_attempted %}
+              <span class="band-badge band-{{ row.band_class }}">
+                {{ row.grade_band }}
+              </span>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Action: View Answer Sheet -->
+          <td class="pe-4 text-end">
+            {% if row.has_attempted and row.best_attempt %}
+              <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-none"
+                      style="font-size: 11px; transition: all 0.15s ease;"
+                      onclick="openAnswerSheetModal({{ row.best_attempt.pk }})">
+                <i class="bi bi-eye"></i>
+                <span>View Answers</span>
+              </button>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-5 small">
+            No students found in the target batch or semester.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Student Answer Sheet Drill-Down -->
+<div class="modal fade" id="answerSheetModal" tabindex="-1" aria-labelledby="answerSheetModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow rounded-4">
+      <div class="modal-header border-bottom py-3 px-4 bg-light bg-opacity-50">
+        <div>
+          <h5 class="modal-title fw-bold text-dark mb-0 d-flex align-items-center gap-2" id="answerSheetModalLabel" style="font-size: 16px;">
+            <i class="bi bi-file-earmark-check-fill text-primary"></i>
+            <span id="modalStudentName">Student Answer Sheet</span>
+          </h5>
+          <span class="text-muted small" id="modalSubMeta">Attempt Details &bull; Verified Evaluation</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <!-- Summary Score Card in Modal -->
+        <div class="p-3 rounded-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+          <div>
+            <div class="text-muted small" style="font-size: 11px;">STUDENT SCORE</div>
+            <div class="h4 fw-bold text-dark mb-0">
+              <span id="modalScore">0</span> / <span id="modalTotalQ">0</span>
+              <span class="badge ms-2" id="modalPctBadge" style="font-size: 13px;">0%</span>
+            </div>
+          </div>
+          <div class="text-end">
+            <div class="text-muted small" style="font-size: 11px;">TIME TAKEN</div>
+            <div class="fw-bold text-dark" id="modalTimeTaken">—</div>
+            <small class="text-muted" id="modalCompletedAt"></small>
+          </div>
+        </div>
+
+        <div id="modalLoadingSpinner" class="text-center py-5">
+          <div class="spinner-border text-primary mb-2" role="status"></div>
+          <div class="text-muted small">Loading question responses...</div>
+        </div>
+
+        <!-- Questions List Container -->
+        <div id="modalQuestionsList" class="d-flex flex-column gap-3" style="display: none;"></div>
+      </div>
+
+      <div class="modal-footer border-top py-2.5 px-4 bg-light bg-opacity-25">
+        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal" style="font-size: 13px;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentFilter = 'all';
+
+  function setRosterFilter(filterName, btnEl) {
+    currentFilter = filterName;
+    document.querySelectorAll('.filter-pill-btn').forEach(btn => btn.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+    filterRosterTable();
+  }
+
+  function filterRosterTable() {
+    const searchVal = document.getElementById('rosterSearchInput').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('.roster-row');
+
+    rows.forEach(row => {
+      const rowStatus = row.getAttribute('data-status');
+      const rowPassed = row.getAttribute('data-passed');
+      const rowBand   = row.getAttribute('data-band');
+      const studentData = row.getAttribute('data-student-name') || '';
+
+      // Check button filter
+      let matchesFilter = true;
+      if (currentFilter === 'attempted') {
+        matchesFilter = (rowStatus === 'attempted');
+      } else if (currentFilter === 'passed') {
+        matchesFilter = (rowPassed === 'passed');
+      } else if (currentFilter === 'needs_attention') {
+        matchesFilter = (rowBand === 'needs_attention');
+      } else if (currentFilter === 'unattempted') {
+        matchesFilter = (rowStatus === 'unattempted');
+      }
+
+      // Check search keyword
+      const matchesSearch = (!searchVal || studentData.includes(searchVal));
+
+      if (matchesFilter && matchesSearch) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  // Answer Sheet Modal AJAX Loader
+  function openAnswerSheetModal(attemptId) {
+    const modalEl = document.getElementById('answerSheetModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    const spinner = document.getElementById('modalLoadingSpinner');
+    const list = document.getElementById('modalQuestionsList');
+    spinner.style.display = 'block';
+    list.style.display = 'none';
+    list.innerHTML = '';
+
+    fetch(`/teacher/quizzes/attempts/${attemptId}/detail/`)
+      .then(res => res.json())
+      .then(data => {
+        spinner.style.display = 'none';
+        list.style.display = 'flex';
+
+        document.getElementById('modalStudentName').innerText = `${data.student_name} (${data.student_roll})`;
+        document.getElementById('modalScore').innerText = data.score;
+        document.getElementById('modalTotalQ').innerText = data.total_questions;
+
+        const pct = data.percentage;
+        const badge = document.getElementById('modalPctBadge');
+        badge.innerText = `${pct}%`;
+        badge.className = `badge ms-2 ${pct >= 70 ? 'bg-success' : (pct >= 50 ? 'bg-warning text-dark' : 'bg-danger')}`;
+
+        const mins = Math.floor(data.time_taken_seconds / 60);
+        const secs = data.time_taken_seconds % 60;
+        document.getElementById('modalTimeTaken').innerText = `${mins}m ${secs}s`;
+        document.getElementById('modalCompletedAt').innerText = data.completed_at;
+
+        // Render each question
+        data.questions.forEach((q, idx) => {
+          const isCorrect = q.is_correct;
+          const card = document.createElement('div');
+          card.className = `p-3.5 rounded-3 ${isCorrect ? 'border border-success-subtle bg-success-subtle bg-opacity-10' : 'border border-danger-subtle bg-danger-subtle bg-opacity-10'}`;
+
+          card.innerHTML = `
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+              <span class="fw-bold text-dark" style="font-size: 13.5px;">Q${q.number}. ${escapeHtml(q.text)}</span>
+              <span class="badge ${isCorrect ? 'bg-success text-white' : 'bg-danger text-white'} rounded-pill px-2.5 py-1" style="font-size: 11px;">
+                ${isCorrect ? '+1 Mark (Correct)' : '0 Marks (Incorrect)'}
+              </span>
+            </div>
+
+            <!-- Options Breakdown -->
+            <div class="d-flex flex-column gap-1.5 my-2">
+              ${renderOptionRow('A', q.option_a, q.selected_option, q.correct_option)}
+              ${renderOptionRow('B', q.option_b, q.selected_option, q.correct_option)}
+              ${renderOptionRow('C', q.option_c, q.selected_option, q.correct_option)}
+              ${renderOptionRow('D', q.option_d, q.selected_option, q.correct_option)}
+            </div>
+
+            ${q.explanation ? `
+              <div class="mt-2.5 p-2.5 rounded-2 bg-white border text-secondary small" style="font-size: 12px;">
+                <strong class="text-dark"><i class="bi bi-info-circle text-primary me-1"></i>Explanation:</strong>
+                ${escapeHtml(q.explanation)}
+              </div>
+            ` : ''}
+          `;
+          list.appendChild(card);
+        });
+      })
+      .catch(err => {
+        spinner.style.display = 'none';
+        list.style.display = 'block';
+        list.innerHTML = `<div class="alert alert-danger py-2 small">Error loading answer sheet: ${err}</div>`;
+      });
+  }
+
+  function renderOptionRow(letter, text, selectedLetter, correctLetter) {
+    if (!text) return '';
+    const isSelected = (selectedLetter === letter);
+    const isCorrect = (correctLetter === letter);
+
+    let rowStyle = 'background: #ffffff; border: 1px solid #e2e8f0; color: #334155;';
+    let icon = '';
+
+    if (isCorrect) {
+      rowStyle = 'background: #f0fdf4; border: 1.5px solid #22c55e; color: #15803d; font-weight: 600;';
+      icon = '<i class="bi bi-check-circle-fill text-success ms-auto"></i>';
+    } else if (isSelected && !isCorrect) {
+      rowStyle = 'background: #fef2f2; border: 1.5px solid #ef4444; color: #b91c1c; font-weight: 600;';
+      icon = '<i class="bi bi-x-circle-fill text-danger ms-auto"></i>';
+    }
+
+    return `
+      <div class="p-2 rounded-2 d-flex align-items-center gap-2" style="${rowStyle}; font-size: 12.5px;">
+        <span class="badge rounded-circle bg-light text-dark border px-2 py-1">${letter}</span>
+        <span class="flex-grow-1">${escapeHtml(text)}</span>
+        ${isSelected ? `<span class="badge bg-secondary-subtle text-secondary me-1" style="font-size: 10px;">Student's Choice</span>` : ''}
+        ${icon}
+      </div>
+    `;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+</script>
+{% endblock %}

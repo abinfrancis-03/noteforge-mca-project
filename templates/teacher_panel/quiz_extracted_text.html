@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block title %}PDF Preprocessing & Page Extraction (Phase 2) — Noteforge{% endblock %}
+{% block topbar_title %}AI Assessment Engine &bull; PDF Preprocessing{% endblock %}
+
+{% block content %}
+<style>
+  .phase-badge {
+    background: #ecfdf5;
+    color: #065f46;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    border: 1px solid #a7f3d0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .step-pill.completed {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+  }
+  .step-pill.active {
+    background-color: var(--nf-indigo);
+    color: #ffffff;
+  }
+  .step-pill.upcoming {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border: 1px dashed #cbd5e1;
+  }
+  .page-card {
+    border: 1px solid #eef2f6;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+  }
+  .page-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  }
+  .page-text-content {
+    font-family: 'JetBrains Mono', 'Plus Jakarta Sans', monospace, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #1e293b;
+    white-space: pre-wrap;
+    background-color: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    max-height: 450px;
+    overflow-y: auto;
+  }
+</style>
+
+<!-- Phase Stepper Indicator -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <span class="phase-badge"><i class="bi bi-check2-all me-1"></i>Phase 2 of 5</span>
+    <span class="text-secondary small fw-medium">Document Preprocessing &amp; Page Extraction</span>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <span class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 1. Configuration
+    </span>
+    <i class="bi bi-chevron-right text-muted small"></i>
+    <span class="step-pill active shadow-xs">
+      <i class="bi bi-file-earmark-text-fill"></i> 2. PDF Processing
+    </span>
+    <i class="bi bi-chevron-right text-muted small"></i>
+    <span class="step-pill upcoming">
+      <i class="bi bi-3-circle"></i> 3. AI Question Synthesis
+    </span>
+  </div>
+</div>
+
+<!-- Assessment Summary Header Card -->
+<div class="card bg-white p-4 shadow-sm border-0 rounded-3 mb-4" style="border: 1px solid #eef2f6 !important;">
+  <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h5 class="fw-bold text-dark mb-0">{{ quiz.title }}</h5>
+        <span class="badge bg-primary-subtle text-primary">{{ quiz.subject.subject_code }}</span>
+      </div>
+      <p class="text-secondary small mb-0">
+        {{ quiz.subject.name }} &bull; Semester {{ quiz.subject.semester.number }} &bull; 
+        Target: {{ quiz.num_questions }} Questions ({{ quiz.get_difficulty_display }} &bull; {{ quiz.get_question_types_display }})
+      </p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      {% if quiz.pdf_file %}
+      <a href="{{ quiz.pdf_file.url }}" target="_blank" class="btn btn-sm btn-light border rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 text-danger" style="font-size: 12.5px;">
+        <i class="bi bi-file-earmark-pdf-fill"></i>
+        <span>Original PDF</span>
+      </a>
+      {% endif %}
+      <a href="{% url 'teacher_quiz_extracted_text' quiz.pk %}?reprocess=1" class="btn btn-sm btn-light border rounded-pill px-3 py-1.5 fw-semibold text-secondary d-inline-flex align-items-center gap-1.5" style="font-size: 12.5px;">
+        <i class="bi bi-arrow-clockwise"></i>
+        <span>Re-process PDF</span>
+      </a>
+      <a href="{% url 'teacher_quiz_list' %}" class="btn btn-sm btn-light border rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 12.5px;">
+        ← All Quizzes
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Extraction Statistics Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card bg-white p-3 border-0 shadow-sm rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="text-muted small fw-semibold text-uppercase" style="font-size: 11px;">Total Pages</div>
+      <h3 class="fw-bold text-dark my-1">{{ total_pages }}</h3>
+      <span class="text-secondary small" style="font-size: 11.5px;">Indexed sequentially</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-white p-3 border-0 shadow-sm rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="text-muted small fw-semibold text-uppercase" style="font-size: 11px;">Clean Characters</div>
+      <h3 class="fw-bold my-1" style="color: var(--nf-indigo);">{{ total_clean_chars|default:"0" }}</h3>
+      <span class="text-secondary small" style="font-size: 11.5px;">Cleaned text content</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-white p-3 border-0 shadow-sm rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="text-muted small fw-semibold text-uppercase" style="font-size: 11px;">Primary Engine</div>
+      <h3 class="fw-bold text-success my-1">PyMuPDF</h3>
+      <span class="text-secondary small" style="font-size: 11.5px;">High-fidelity fitz parser</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-white p-3 border-0 shadow-sm rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="text-muted small fw-semibold text-uppercase" style="font-size: 11px;">OCR Readiness</div>
+      <h3 class="fw-bold my-1 {% if ocr_needed_count > 0 %}text-warning{% else %}text-secondary{% endif %}">
+        {{ ocr_needed_count }} <span style="font-size: 14px; font-weight: normal;">scanned</span>
+      </h3>
+      <span class="text-secondary small" style="font-size: 11.5px;">
+        {% if ocr_needed_count > 0 %}Ready for OCR fallback{% else %}All pages text-native{% endif %}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Header / Clean Content Instruction Banner -->
+<div class="alert alert-light border shadow-sm rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-shield-check text-success fs-5"></i>
+    <span class="small text-dark">
+      <strong>Preprocessing Complete:</strong> Headers, recurring footers, page numbering stamps, and redundant whitespaces were cleaned while retaining all academic terminology, formulas, and paragraphs.
+    </span>
+  </div>
+  <span class="badge bg-light text-secondary border">Page-by-Page View</span>
+</div>
+
+<!-- Page-by-Page Content Accordion / List -->
+<div class="d-flex flex-column gap-3 mb-4">
+  {% for page in pages %}
+  <div class="page-card p-3.5 shadow-xs">
+    
+    <!-- Page Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2.5 pb-2 border-bottom">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: var(--nf-indigo); color: #ffffff; font-size: 11.5px;">
+          Page {{ page.page_number }}
+        </span>
+        <span class="text-secondary small">
+          <strong>{{ page.clean_char_count }}</strong> characters
+        </span>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        {% if page.extraction_method == 'fitz' %}
+          <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 10.5px;">
+            <i class="bi bi-check-circle me-1"></i>PyMuPDF Native Text
+          </span>
+        {% elif page.extraction_method == 'ocr' %}
+          <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size: 10.5px;">
+            <i class="bi bi-eye me-1"></i>OCR Extracted
+          </span>
+        {% else %}
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 10.5px;">
+            <i class="bi bi-camera me-1"></i>Scanned Image / OCR Pending
+          </span>
+        {% endif %}
+
+        {% if page.ocr_needed %}
+          <span class="badge bg-danger-subtle text-danger" style="font-size: 10.5px;">
+            <i class="bi bi-exclamation-triangle me-1"></i>Low Text Density
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Page Body -->
+    {% if page.clean_text %}
+      <div class="page-text-content">{{ page.clean_text }}</div>
+    {% else %}
+      <div class="p-4 rounded-3 text-center bg-light text-muted small">
+        <i class="bi bi-file-earmark-image fs-3 d-block mb-1 text-secondary opacity-50"></i>
+        This page does not contain extractable vector text (scanned page or graphic diagram).<br>
+        <span class="text-secondary">Prepared for optical character recognition (OCR) fallback.</span>
+      </div>
+    {% endif %}
+
+  </div>
+  {% empty %}
+  <div class="card bg-white p-5 text-center rounded-3 border-0 shadow-sm">
+    <i class="bi bi-file-earmark-x fs-1 text-muted opacity-50 mb-2"></i>
+    <h6 class="fw-bold text-dark">No Extracted Pages Found</h6>
+    <p class="text-secondary small mb-3">The PDF has not been processed yet or the file is missing.</p>
+    <div>
+      <a href="{% url 'teacher_quiz_extracted_text' quiz.pk %}?reprocess=1" class="btn btn-primary btn-sm rounded-pill px-3">
+        Process PDF Now
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Bottom Navigation Bar -->
+<div class="d-flex align-items-center justify-content-between p-3 bg-white border rounded-3 shadow-sm">
+  <a href="{% url 'teacher_quiz_list' %}" class="btn btn-light border rounded-pill px-4" style="font-size: 13px;">
+    ← Back to Quizzes
+  </a>
+
+  <div class="d-flex align-items-center gap-2">
+    <span class="text-muted small me-2">Phase 2 Complete</span>
+    <a href="{% url 'teacher_quiz_chunks' quiz.pk %}" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm d-inline-flex align-items-center gap-1.5" style="font-size: 13px;">
+      <span>Proceed to Semantic Chunks (Phase 3)</span>
+      <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+</div>
+{% endblock %}

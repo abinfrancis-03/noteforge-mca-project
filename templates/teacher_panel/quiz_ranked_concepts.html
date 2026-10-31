@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% block title %}Concept Ranking (Phase 5) — Noteforge{% endblock %}
+{% block topbar_title %}AI Assessment Engine &bull; Concept Prioritization{% endblock %}
+
+{% block content %}
+<style>
+  .phase-badge {
+    background: #fdf2f8;
+    color: #be185d;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    border: 1px solid #fbcfe8;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .step-pill.completed {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+  }
+  .step-pill.completed:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+  }
+  .step-pill.active {
+    background-color: var(--nf-indigo);
+    color: #ffffff;
+  }
+  .step-pill.upcoming {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border: 1px dashed #cbd5e1;
+  }
+  .concept-card {
+    border: 1px solid #eef2f6;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+  }
+  .concept-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  }
+  .tier-badge-high {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    font-weight: 700;
+  }
+  .tier-badge-medium {
+    background-color: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    font-weight: 700;
+  }
+  .tier-badge-low {
+    background-color: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    font-weight: 600;
+  }
+  .score-bar {
+    height: 6px;
+    border-radius: 3px;
+    background-color: #f1f5f9;
+    overflow: hidden;
+  }
+  .score-fill-high { background-color: #ef4444; }
+  .score-fill-medium { background-color: #f59e0b; }
+  .score-fill-low { background-color: #94a3b8; }
+</style>
+
+<!-- Phase Stepper Indicator -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <span class="phase-badge"><i class="bi bi-star-fill me-1"></i>Phase 5 of 6</span>
+    <h5 class="mb-0 fw-bold text-dark">Important Concept Ranking</h5>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{% url 'teacher_quiz_list' %}" class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 1. Config
+    </a>
+    <a href="{% url 'teacher_quiz_extracted_text' quiz.pk %}" class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 2. Preprocessing
+    </a>
+    <a href="{% url 'teacher_quiz_chunks' quiz.pk %}" class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 3. Chunks
+    </a>
+    <a href="{% url 'teacher_quiz_analysis' quiz.pk %}" class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 4. AI Analysis
+    </a>
+    <span class="step-pill active shadow-sm">
+      <i class="bi bi-award-fill"></i> 5. Concept Ranking
+    </span>
+    <span class="step-pill upcoming">
+      6 & 7. MCQs & Bloom's
+    </span>
+  </div>
+</div>
+
+<!-- Header Info Bar -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(135deg, #ffffff 0%, #fdf2f8 100%);">
+  <div class="card-body p-4">
+    <div class="row align-items-center g-3">
+      <div class="col-lg-8">
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 fw-semibold">
+            {{ quiz.subject.name }} ({{ quiz.subject.subject_code }})
+          </span>
+          <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">
+            {{ quiz.subject.department.code }} &bull; Semester {{ quiz.subject.semester.number }}
+          </span>
+        </div>
+        <h4 class="fw-bold text-dark mb-1">{{ quiz.title }}</h4>
+        <p class="text-muted small mb-0">
+          <i class="bi bi-funnel-fill text-danger me-1"></i> Prioritized based on core concepts, definitions, formulas, relationships, and exam usefulness. Trivial narrative facts filtered out.
+        </p>
+      </div>
+
+      <div class="col-lg-4 text-lg-end d-flex align-items-center justify-content-lg-end gap-2 flex-wrap">
+        <a href="{% url 'teacher_quiz_ranked_concepts' quiz.pk %}?rerank=1" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1.5" onclick="return confirm('Re-evaluate and rank concepts from the source text?');">
+          <i class="bi bi-arrow-clockwise"></i>
+          <span>Re-rank Concepts</span>
+        </a>
+        <a href="{% url 'teacher_quiz_analysis' quiz.pk %}" class="btn btn-sm btn-subtle-primary rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1.5">
+          <i class="bi bi-cpu"></i>
+          <span>View Analysis (Phase 4)</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Metrics Overview -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white">
+      <div class="text-secondary small fw-semibold text-uppercase mb-1" style="font-size: 11px;">Total Evaluated</div>
+      <div class="fs-3 fw-bold text-dark mb-0">{{ total_count }}</div>
+      <span class="text-muted" style="font-size: 11px;">All Curriculum Concepts</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white border-bottom border-danger border-3">
+      <div class="text-danger small fw-bold text-uppercase mb-1" style="font-size: 11px;">HIGH Priority</div>
+      <div class="fs-3 fw-bold text-danger mb-0">{{ high_count }}</div>
+      <span class="text-muted" style="font-size: 11px;">Exam Critical Topics</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white border-bottom border-warning border-3">
+      <div class="text-warning small fw-bold text-uppercase mb-1" style="font-size: 11px;">MEDIUM Priority</div>
+      <div class="fs-3 fw-bold text-warning mb-0">{{ med_count }}</div>
+      <span class="text-muted" style="font-size: 11px;">Supporting Concepts</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white border-bottom border-secondary border-3">
+      <div class="text-secondary small fw-bold text-uppercase mb-1" style="font-size: 11px;">LOW Priority</div>
+      <div class="fs-3 fw-bold text-secondary mb-0">{{ low_count }}</div>
+      <span class="text-muted" style="font-size: 11px;">Background / Narrative</span>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+  <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-1.5 flex-wrap">
+      <span class="text-muted small fw-semibold me-2">Filter by Tier:</span>
+      <a href="{% url 'teacher_quiz_ranked_concepts' quiz.pk %}" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold {% if tier_filter == 'ALL' %}btn-dark{% else %}btn-light border text-secondary{% endif %}">
+        All ({{ total_count }})
+      </a>
+      <a href="{% url 'teacher_quiz_ranked_concepts' quiz.pk %}?tier=HIGH" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold {% if tier_filter == 'HIGH' %}btn-danger{% else %}btn-light border text-danger{% endif %}">
+        <i class="bi bi-fire me-1"></i>High Priority ({{ high_count }})
+      </a>
+      <a href="{% url 'teacher_quiz_ranked_concepts' quiz.pk %}?tier=MEDIUM" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold {% if tier_filter == 'MEDIUM' %}btn-warning text-dark{% else %}btn-light border text-warning{% endif %}">
+        <i class="bi bi-star me-1"></i>Medium Priority ({{ med_count }})
+      </a>
+      <a href="{% url 'teacher_quiz_ranked_concepts' quiz.pk %}?tier=LOW" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold {% if tier_filter == 'LOW' %}btn-secondary{% else %}btn-light border text-secondary{% endif %}">
+        <i class="bi bi-dash-circle me-1"></i>Low Priority ({{ low_count }})
+      </a>
+    </div>
+
+    <span class="text-muted small">
+      Showing <strong>{{ concepts|length }}</strong> concepts
+    </span>
+  </div>
+
+  <div class="card-body p-4">
+    <div class="row g-3">
+      {% for item in concepts %}
+        <div class="col-12">
+          <div class="concept-card p-3.5">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge rounded-pill px-2.5 py-1 {% if item.importance == 'HIGH' %}tier-badge-high{% elif item.importance == 'MEDIUM' %}tier-badge-medium{% else %}tier-badge-low{% endif %}">
+                  {% if item.importance == 'HIGH' %}<i class="bi bi-fire me-1"></i>HIGH PRIORITY
+                  {% elif item.importance == 'MEDIUM' %}<i class="bi bi-star-fill me-1"></i>MEDIUM PRIORITY
+                  {% else %}<i class="bi bi-dash-circle me-1"></i>LOW PRIORITY{% endif %}
+                </span>
+                <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 small">
+                  {{ item.category }}
+                </span>
+                <h6 class="fw-bold text-dark mb-0 fs-6">{{ item.concept }}</h6>
+              </div>
+
+              <!-- Score Pill & Progress -->
+              <div class="d-flex align-items-center gap-2" style="min-width: 140px;">
+                <div class="w-100">
+                  <div class="d-flex justify-content-between align-items-center small mb-1">
+                    <span class="text-muted" style="font-size: 11px;">Importance</span>
+                    <span class="fw-bold {% if item.importance == 'HIGH' %}text-danger{% elif item.importance == 'MEDIUM' %}text-warning{% else %}text-secondary{% endif %}" style="font-size: 11.5px;">
+                      {{ item.importance_score }}/100
+                    </span>
+                  </div>
+                  <div class="score-bar">
+                    <div class="h-100 {% if item.importance == 'HIGH' %}score-fill-high{% elif item.importance == 'MEDIUM' %}score-fill-medium{% else %}score-fill-low{% endif %}" style="width: {{ item.importance_score }}%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reason Box -->
+            <div class="bg-light p-2.5 rounded-3 mb-2 small text-secondary border-start border-3 {% if item.importance == 'HIGH' %}border-danger{% elif item.importance == 'MEDIUM' %}border-warning{% else %}border-secondary{% endif %}">
+              <span class="fw-bold text-dark"><i class="bi bi-chat-left-quote me-1"></i>Rationale:</span> {{ item.reason }}
+            </div>
+
+            <!-- Source Provenance Tags -->
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top">
+              <div class="d-flex align-items-center gap-1.5">
+                <span class="badge bg-white text-primary border font-monospace" style="font-size: 11px;">
+                  <i class="bi bi-layers me-1"></i>{{ item.chunk_id }}
+                </span>
+                <span class="badge bg-white text-secondary border font-monospace" style="font-size: 11px;">
+                  <i class="bi bi-file-earmark me-1"></i>{% if item.start_page == item.end_page %}Page {{ item.start_page }}{% else %}Pages {{ item.start_page }}–{{ item.end_page }}{% endif %}
+                </span>
+              </div>
+              <span class="text-muted" style="font-size: 11px;">
+                {% if item.importance == 'HIGH' %}
+                  <span class="text-danger fw-semibold"><i class="bi bi-check2-circle me-1"></i>Recommended for High-Yield MCQ Generation</span>
+                {% elif item.importance == 'MEDIUM' %}
+                  <span class="text-warning-emphasis"><i class="bi bi-check2 me-1"></i>Suitable for Supporting / Comprehension MCQs</span>
+                {% else %}
+                  <span class="text-secondary"><i class="bi bi-dash me-1"></i>Excluded from Primary Question Bank</span>
+                {% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12 text-center py-5 text-muted small">
+          <i class="bi bi-funnel fs-2 d-block mb-2 opacity-50"></i>
+          No concepts match the selected tier filter.
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Navigation Bar -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-4 pt-3 border-top">
+  <a href="{% url 'teacher_quiz_analysis' quiz.pk %}" class="btn btn-outline-secondary rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2">
+    <i class="bi bi-arrow-left"></i>
+    <span>Back to AI Content Analysis (Phase 4)</span>
+  </a>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'teacher_quiz_list' %}" class="btn btn-light rounded-pill px-4 py-2 fw-semibold text-secondary">
+      Quizzes Hub
+    </a>
+    <a href="{% url 'teacher_quiz_questions' quiz.pk %}" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-xs">
+      <span>Proceed to MCQs & Bloom's Taxonomy (Phase 6 & 7)</span>
+      <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,222 @@
+﻿{% extends 'base.html' %}
+{% block title %}{{ teacher.get_full_name }} — Noteforge{% endblock %}
+{% block topbar_title %}Faculty Management{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb / back nav -->
+<div class="mb-4">
+  <a href="{% url 'teacher_list' %}?dept={{ teacher.department_id }}" class="text-decoration-none text-secondary small">
+    <i class="bi bi-arrow-left me-1"></i>Back to {{ teacher.department.name }} Teachers
+  </a>
+</div>
+
+<!-- Header card -->
+<div class="card bg-white mb-4">
+  <div class="card-body p-4">
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+      <!-- Avatar + name block -->
+      <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary fw-bold"
+             style="width: 56px; height: 56px; font-size: 1.3rem; flex-shrink: 0;">
+          {{ teacher.first_name|first|upper }}{{ teacher.last_name|first|upper }}
+        </div>
+        <div>
+          <h5 class="fw-bold text-dark mb-1">{{ teacher.get_full_name|default:teacher.username }}</h5>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            {% if teacher.is_hod %}
+              <span class="badge bg-warning-subtle text-warning-emphasis">HOD</span>
+            {% elif teacher.designation == 'assistant_professor' %}
+              <span class="badge bg-primary-subtle text-primary">Asst. Prof.</span>
+            {% elif teacher.designation == 'associate_professor' %}
+              <span class="badge bg-success-subtle text-success">Assoc. Prof.</span>
+            {% endif %}
+            {% if teacher.is_first_login %}
+              <span class="badge bg-danger-subtle text-danger">Pending Login</span>
+            {% else %}
+              <span class="badge bg-success-subtle text-success">Active</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'teacher_edit' teacher.pk %}" class="btn btn-sm btn-primary px-3">
+          <i class="bi bi-pencil me-1"></i>Edit
+        </a>
+        <button type="button" class="btn btn-sm btn-light border text-warning-emphasis px-3"
+                data-bs-toggle="modal" data-bs-target="#resetPasswordModal"
+                data-name="{{ teacher.get_full_name|default:teacher.username }}"
+                data-url="{% url 'teacher_reset_password' teacher.pk %}">
+          <i class="bi bi-key me-1"></i>Reset Password
+        </button>
+        <button type="button" class="btn btn-sm btn-light border text-danger px-3"
+                data-bs-toggle="modal" data-bs-target="#deleteModal"
+                data-name="{{ teacher.get_full_name|default:teacher.username }}"
+                data-url="{% url 'teacher_delete' teacher.pk %}">
+          <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile details + Assigned subjects -->
+<div class="row g-4">
+
+  <!-- Left: Profile info -->
+  <div class="col-md-5">
+    <div class="card bg-white h-100">
+      <div class="card-header bg-white py-3">
+        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-person-lines-fill text-primary me-2"></i>Profile Details</h6>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr>
+              <td class="text-secondary small ps-4" style="width: 40%;">Username</td>
+              <td class="fw-semibold small"><code>{{ teacher.username }}</code></td>
+            </tr>
+            <tr>
+              <td class="text-secondary small ps-4">Email</td>
+              <td class="small">{{ teacher.email|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary small ps-4">Employee ID</td>
+              <td class="small">{{ teacher.employee_id|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary small ps-4">Phone</td>
+              <td class="small">{{ teacher.phone|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary small ps-4">Date of Birth</td>
+              <td class="small">{{ teacher.date_of_birth|date:"d M Y"|default:"—" }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary small ps-4">Department</td>
+              <td class="small">{{ teacher.department.name|default:"—" }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Assigned subjects by semester -->
+  <div class="col-md-7">
+    <div class="card bg-white h-100">
+      <div class="card-header bg-white py-3">
+        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-book text-primary me-2"></i>Assigned Subjects</h6>
+      </div>
+      <div class="card-body">
+        {% if sem_subjects %}
+          <div class="d-flex flex-column gap-3">
+            {% for entry in sem_subjects %}
+            <div>
+              <div class="mb-2">
+                <span class="badge bg-primary-subtle text-primary" style="font-size: 0.75rem;">
+                  Semester {{ entry.semester.number }}
+                </span>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                {% for sub in entry.subjects %}
+                <div class="border rounded p-2" style="min-width: 150px; background: #fafafa;">
+                  <div class="fw-semibold text-dark" style="font-size: 0.8rem;">{{ sub.subject_code }}</div>
+                  <div class="text-secondary" style="font-size: 0.75rem;">{{ sub.name }}</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% if not forloop.last %}<hr class="my-1 opacity-25">{% endif %}
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4">
+            <i class="bi bi-journal-x fs-2 text-muted opacity-50"></i>
+            <p class="text-muted small mt-2 mb-0">No subjects assigned yet.</p>
+            <a href="{% url 'teacher_edit' teacher.pk %}" class="btn btn-sm btn-primary mt-3">
+              <i class="bi bi-pencil me-1"></i>Assign Subjects
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10 text-warning" style="width:56px;height:56px;">
+          <i class="bi bi-key-fill fs-3"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-2">Reset Password?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Reset password for <strong id="resetUserName"></strong>? A new temporary password will be generated.
+        </p>
+        <form method="post" id="resetPasswordForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 py-2 fw-semibold">Yes, Reset Password</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10 text-danger" style="width:56px;height:56px;">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-2">Delete "<span id="deleteObjectName"></span>"?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Are you sure you want to permanently delete this teacher? This action cannot be undone.
+        </p>
+        <form method="post" id="deleteForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'teacher_list' %}?dept={{ teacher.department_id }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-danger btn-pill px-4 py-2 fw-semibold">Yes, Delete</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const resetModal = document.getElementById('resetPasswordModal');
+    if (resetModal) {
+      resetModal.addEventListener('show.bs.modal', function (e) {
+        const btn = e.relatedTarget;
+        document.getElementById('resetUserName').textContent = btn.getAttribute('data-name');
+        document.getElementById('resetPasswordForm').action = btn.getAttribute('data-url');
+      });
+    }
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+      deleteModal.addEventListener('show.bs.modal', function (e) {
+        const btn = e.relatedTarget;
+        document.getElementById('deleteObjectName').textContent = btn.getAttribute('data-name');
+        document.getElementById('deleteForm').action = btn.getAttribute('data-url');
+      });
+    }
+  });
+</script>
+
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Faculty Dashboard — Noteforge{% endblock %}
+{% block topbar_title %}Faculty Curriculum Workspace{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Welcome back, {{ teacher.get_full_name|default:teacher.username }}!</h4>
+    <p class="text-secondary small mb-0">
+      {{ department.name|default:"Department not assigned" }}
+      {% if teacher.designation %} — {{ teacher.get_designation_display }}{% endif %}
+      {% if teacher.is_hod %}<span class="badge bg-warning-subtle text-warning-emphasis rounded-pill ms-2">✦ HOD</span>{% endif %}
+    </p>
+  </div>
+  <a href="{% url 'teacher_material_add' %}" class="btn btn-primary btn-pill shadow-sm"><i class="bi bi-upload me-1.5"></i>Upload Study Material</a>
+</div>
+
+<!-- Primary Metric KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card card-hover bg-white h-100 p-4">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">My Uploaded Materials</span>
+        <div class="btn-circle bg-primary bg-opacity-10 text-primary" style="color: var(--nf-indigo) !important;"><i class="bi bi-file-earmark-text fs-5"></i></div>
+      </div>
+      <div class="d-flex align-items-center flex-wrap gap-2 mt-1">
+        <h2 class="fw-bold text-dark mb-0 display-6" style="font-size: 1.85rem;">{{ my_materials_count }}</h2>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1">Uploaded PDF Files</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card card-hover bg-white h-100 p-4">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Department Subjects</span>
+        <div class="btn-circle bg-info bg-opacity-10 text-info"><i class="bi bi-journal-bookmark fs-5"></i></div>
+      </div>
+      <div class="d-flex align-items-center flex-wrap gap-2 mt-1">
+        <h2 class="fw-bold text-dark mb-0 display-6" style="font-size: 1.85rem;">{{ dept_subjects_count }}</h2>
+        <span class="badge bg-light text-secondary border px-2.5 py-1">Active Courses</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card card-hover bg-white h-100 p-4">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Department Students</span>
+        <div class="btn-circle bg-success bg-opacity-10 text-success"><i class="bi bi-people fs-6"></i></div>
+      </div>
+      <div class="d-flex align-items-center flex-wrap gap-2 mt-1">
+        <h2 class="fw-bold text-dark mb-0 display-6" style="font-size: 1.85rem;">{{ dept_students_count }}</h2>
+        <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1">Enrolled Students</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card card-hover bg-white">
+  <div class="card-header-styled d-flex align-items-center justify-content-between py-3">
+    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+      <i class="bi bi-file-earmark-pdf fs-5" style="color: var(--nf-indigo) !important;"></i> Recent Materials Uploaded By You
+    </h6>
+    <a href="{% url 'teacher_material_list' %}" class="btn btn-sm btn-light border rounded-pill px-3 py-1 text-dark fw-semibold" style="font-size: 12px;">View All</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr>
+          <th class="ps-4">Title</th>
+          <th>Subject</th>
+          <th>Semester</th>
+          <th>Uploaded Date</th>
+          <th class="pe-4 text-end">Attachment</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in recent_materials %}
+        <tr>
+          <td class="ps-4"><strong class="text-dark">{{ m.title }}</strong></td>
+          <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 me-1">{{ m.subject.subject_code }}</span> {{ m.subject.name }}</td>
+          <td>Semester {{ m.subject.semester.number }}</td>
+          <td class="small text-muted">{{ m.created_at|date:"d M Y, h:i A" }}</td>
+          <td class="pe-4 text-end">
+            {% if m.file %}
+              <a href="{{ m.file.url }}" target="_blank" class="btn btn-sm btn-primary btn-pill"><i class="bi bi-download me-1"></i> View File</a>
+            {% elif m.external_link %}
+              <a href="{{ m.external_link }}" target="_blank" class="btn btn-sm btn-light border btn-pill"><i class="bi bi-link-45deg me-1"></i> Link</a>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4 small">No materials uploaded yet. <a href="{% url 'teacher_material_add' %}">Upload your first material →</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

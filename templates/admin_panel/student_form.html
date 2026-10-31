@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Student — Noteforge{% endblock %}
+
+{% block content %}
+<style>
+  .student-form-wrap .form-control,
+  .student-form-wrap .form-select {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px !important;
+    color: #1e293b;
+    padding: 0.48rem 0.75rem !important;
+    border-color: #cbd5e1;
+    border-radius: 8px;
+  }
+  .student-form-wrap .form-control::placeholder {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px !important;
+    color: #94a3b8;
+  }
+  .student-form-wrap .form-label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12.5px !important;
+    margin-bottom: 0.35rem;
+  }
+  .student-form-wrap input[type="date"] {
+    font-size: 13px !important;
+  }
+  .student-form-wrap .form-control:disabled,
+  .student-form-wrap .form-control[readonly] {
+    background-color: #f8fafc !important;
+    color: #334155;
+    font-weight: 500;
+  }
+</style>
+<div class="row justify-content-center py-3">
+  <div class="col-md-9 col-lg-7">
+    <div class="student-form-wrap card card-style bg-white p-4 p-md-5 shadow-sm">
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-person-lines-fill fs-5" style="color: var(--nf-indigo) !important;"></i> {{ action }} Student Roster
+        </h5>
+        <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'student_list' %}{% if selected_dept %}?dept={{ selected_dept.pk }}{% if selected_batch %}&batch={{ selected_batch.pk }}{% if selected_sem %}&sem={{ selected_sem.pk }}{% endif %}{% endif %}{% endif %}{% endif %}" class="btn btn-sm btn-light border rounded-pill px-3">← Back</a>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold text-dark small">First Name</label>
+            <input type="text" name="first_name" class="form-control" value="{{ student.first_name|default:'' }}" placeholder="First name" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold text-dark small">Last Name</label>
+            <input type="text" name="last_name" class="form-control" value="{{ student.last_name|default:'' }}" placeholder="Last name">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark small">Register Number (Username)</label>
+          <input type="text" name="username" class="form-control" value="{{ student.username|default:'' }}"
+            placeholder="e.g. MCA2024001"
+            {% if action == 'Edit' %}readonly class="form-control bg-light"{% endif %}
+            required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark small">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ student.email|default:'' }}" placeholder="student@college.edu">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark small">Date of Birth</label>
+          <input type="date" name="date_of_birth" class="form-control" value="{{ student.date_of_birth|date:'Y-m-d'|default:'' }}" required>
+          <div class="form-text text-muted small mt-1">Default password will be set to DOB (DDMMYYYY)</div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <!-- 1. Department -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold text-dark small">Department</label>
+            {% if selected_dept %}
+              <input type="text" class="form-control bg-light" value="{{ selected_dept.name }} ({{ selected_dept.code }})" disabled>
+              <input type="hidden" name="department" value="{{ selected_dept.pk }}">
+            {% else %}
+              <select name="department" id="deptSelect" class="form-select" required>
+                <option value="">Select Department</option>
+                {% for d in departments %}
+                <option value="{{ d.pk }}" {% if student.department_id == d.pk %}selected{% endif %}>{{ d.name }} ({{ d.code }})</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </div>
+
+          <!-- 2. Batch -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold text-dark small">Batch</label>
+            {% if selected_batch %}
+              <input type="text" class="form-control bg-light" value="{{ selected_batch }}" disabled>
+              <input type="hidden" name="batch" value="{{ selected_batch.pk }}">
+            {% else %}
+              <select name="batch" id="batchSelect" class="form-select" required>
+                <option value="">{% if selected_dept %}Select Batch{% else %}Select Dept First{% endif %}</option>
+                {% for b in batches %}
+                <option value="{{ b.pk }}" {% if student.batch_id == b.pk %}selected{% endif %}>{{ b }}</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </div>
+
+          <!-- 3. Semester -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold text-dark small">Semester</label>
+            {% if selected_sem %}
+              <input type="text" class="form-control bg-light" value="Semester {{ selected_sem.number }}" disabled>
+              <input type="hidden" name="semester" value="{{ selected_sem.pk }}">
+            {% else %}
+              <select name="semester" id="semSelect" class="form-select" required>
+                <option value="">{% if selected_dept %}Select Sem{% else %}Select Dept First{% endif %}</option>
+                {% for s in semesters %}
+                <option value="{{ s.pk }}" {% if student.semester_id == s.pk %}selected{% endif %}>Semester {{ s.number }}</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">{{ action }} Student</button>
+          <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'student_list' %}{% if selected_dept %}?dept={{ selected_dept.pk }}{% if selected_batch %}&batch={{ selected_batch.pk }}{% if selected_sem %}&sem={{ selected_sem.pk }}{% endif %}{% endif %}{% endif %}{% endif %}" class="btn btn-light border btn-pill px-4 text-dark fw-semibold">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const deptSelect = document.getElementById('deptSelect');
+    const semSelect = document.getElementById('semSelect');
+    const batchSelect = document.getElementById('batchSelect');
+    if (deptSelect) {
+      deptSelect.addEventListener('change', function() {
+        const deptId = this.value;
+        if (!deptId) {
+          if (semSelect) semSelect.innerHTML = '<option value="">Select Dept First</option>';
+          if (batchSelect) batchSelect.innerHTML = '<option value="">Select Dept First</option>';
+          return;
+        }
+        if (semSelect) {
+          semSelect.innerHTML = '<option value="">Loading semesters...</option>';
+          fetch(`/admin-panel/api/semesters/?dept=${deptId}`)
+            .then(res => res.json())
+            .then(data => {
+              let options = '<option value="">Select Sem</option>';
+              if (data.semesters && data.semesters.length > 0) {
+                data.semesters.forEach(s => {
+                  options += `<option value="${s.id}">${s.label}</option>`;
+                });
+              } else {
+                options = '<option value="">No semesters configured</option>';
+              }
+              semSelect.innerHTML = options;
+            })
+            .catch(() => {
+              semSelect.innerHTML = '<option value="">Error loading semesters</option>';
+            });
+        }
+        if (batchSelect) {
+          batchSelect.innerHTML = '<option value="">Loading batches...</option>';
+          fetch(`/admin-panel/api/batches/?dept=${deptId}`)
+            .then(res => res.json())
+            .then(data => {
+              let options = '<option value="">Select Batch</option>';
+              if (data.batches && data.batches.length > 0) {
+                data.batches.forEach(b => {
+                  options += `<option value="${b.id}">${b.label}</option>`;
+                });
+              } else {
+                options = '<option value="">No batches configured</option>';
+              }
+              batchSelect.innerHTML = options;
+            })
+            .catch(() => {
+              batchSelect.innerHTML = '<option value="">Error loading batches</option>';
+            });
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

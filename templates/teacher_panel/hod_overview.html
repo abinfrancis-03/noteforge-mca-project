@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}HOD Department Overview — Noteforge{% endblock %}
+{% block topbar_title %}HOD Department Leadership{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h4 class="fw-bold text-dark mb-0">HOD Department Overview</h4>
+      <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11.5px;">
+        ✦ Head of Department
+      </span>
+    </div>
+    <p class="text-secondary small mb-0">{{ department.name }} <span class="font-monospace">({{ department.code }})</span></p>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card bg-white p-4 shadow-sm border-0 rounded-3" style="border: 1px solid #eef2f6 !important;">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Department Faculty</span>
+        <div class="btn-circle bg-warning bg-opacity-10 text-warning" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-person-badge fs-5"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2">
+        <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem;">{{ teachers.count }}</h2>
+        <span class="text-secondary small">Educators</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card bg-white p-4 shadow-sm border-0 rounded-3" style="border: 1px solid #eef2f6 !important;">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Academic Semesters</span>
+        <div class="btn-circle bg-primary bg-opacity-10 text-primary" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--nf-indigo) !important;">
+          <i class="bi bi-mortarboard fs-5"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2">
+        <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem;">{{ semesters.count }}</h2>
+        <span class="text-secondary small">Active Terms</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card bg-white p-4 shadow-sm border-0 rounded-3" style="border: 1px solid #eef2f6 !important;">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Uploaded Materials</span>
+        <div class="btn-circle bg-info bg-opacity-10 text-info" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-file-earmark-pdf fs-5"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2">
+        <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem;">{{ total_materials }}</h2>
+        <span class="text-secondary small">Resources</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- Left: Faculty Members Table (7 cols) -->
+  <div class="col-lg-7">
+    <div class="card bg-white shadow-sm border-0 rounded-3 overflow-hidden" style="border: 1px solid #eef2f6 !important;">
+      <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle d-flex align-items-center justify-content-between">
+        <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-people text-primary"></i>
+          <span>Department Faculty Roster</span>
+        </h6>
+        <span class="badge bg-light text-secondary border px-2.5 py-1">{{ teachers.count }} Total</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light bg-opacity-50">
+            <tr>
+              <th class="ps-4 text-muted small fw-semibold">Faculty Name</th>
+              <th class="text-muted small fw-semibold">Designation</th>
+              <th class="pe-4 text-end text-muted small fw-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in teachers %}
+            <tr>
+              <td class="ps-4">
+                <strong class="text-dark d-block" style="font-size: 13px;">{{ t.get_full_name|default:t.username }}</strong>
+                <span class="text-muted small">{{ t.email|default:"—" }}</span>
+              </td>
+              <td>
+                {% if t.is_hod %}
+                  <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2.5 py-0.5">✦ HOD</span>
+                {% elif t.designation == 'assistant_professor' %}
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-0.5">Asst. Prof.</span>
+                {% elif t.designation == 'associate_professor' %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-0.5">Assoc. Prof.</span>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td class="pe-4 text-end">
+                {% if t.is_first_login %}
+                  <span class="badge bg-danger-subtle text-danger rounded-pill px-2.5 py-1">Pending Login</span>
+                {% else %}
+                  <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1">Active</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-muted py-4 small">No faculty members assigned yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Semesters & Subjects Table (5 cols) -->
+  <div class="col-lg-5">
+    <div class="card bg-white shadow-sm border-0 rounded-3 overflow-hidden" style="border: 1px solid #eef2f6 !important;">
+      <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle d-flex align-items-center justify-content-between">
+        <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-book text-primary"></i>
+          <span>Semesters &amp; Subjects</span>
+        </h6>
+        <span class="badge bg-light text-secondary border px-2.5 py-1">{{ semesters.count }} Semesters</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light bg-opacity-50">
+            <tr>
+              <th class="ps-4 text-muted small fw-semibold">Semester</th>
+              <th class="pe-4 text-end text-muted small fw-semibold">Subjects</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in semesters %}
+            <tr>
+              <td class="ps-4">
+                <span class="fw-semibold text-dark" style="font-size: 13px;">Semester {{ s.number }}</span>
+              </td>
+              <td class="pe-4 text-end">
+                <span class="badge bg-light text-dark border px-2.5 py-1" style="font-size: 12px; font-weight: 600;">
+                  <i class="bi bi-journal-text me-1 text-primary"></i>{{ s.subject_count }} subject{{ s.subject_count|pluralize }}
+                </span>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-center text-muted py-4 small">No semesters configured yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

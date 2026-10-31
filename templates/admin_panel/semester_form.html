@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Add Semesters — Noteforge{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-3">
+  <div class="col-md-8 col-lg-6">
+    <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-calendar3 fs-5" style="color: var(--nf-indigo) !important;"></i> Add Semesters
+        </h5>
+        <a href="{% url 'semester_list' %}{% if selected_dept %}?dept={{ selected_dept.pk }}{% endif %}" class="btn btn-sm btn-light border rounded-pill px-3">← Back</a>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:request.META.HTTP_REFERER }}">
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark small">Department</label>
+          <select name="department" class="form-select" required {% if selected_dept %}disabled{% endif %}>
+            <option value="">Select Department</option>
+            {% for d in departments %}
+            <option value="{{ d.pk }}" {% if selected_dept and selected_dept.pk == d.pk %}selected{% endif %}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+          {% if selected_dept %}
+          <input type="hidden" name="department" value="{{ selected_dept.pk }}">
+          {% endif %}
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-dark small">Total Number of Semesters</label>
+          <input type="number" name="total_semesters" class="form-control" min="1" max="20" placeholder="e.g. 6" required>
+          <div class="form-text text-muted small mt-1">
+            Entering 6 will automatically generate Semesters 1 through 6. Existing semesters will be preserved.
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">Create Semesters</button>
+          <a href="{% url 'semester_list' %}{% if selected_dept %}?dept={{ selected_dept.pk }}{% endif %}" class="btn btn-light border btn-pill px-4 text-dark fw-semibold">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

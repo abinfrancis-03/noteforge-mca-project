@@ -1,0 +1,501 @@
+{% extends 'base.html' %}
+{% block title %}Configure MCQ Test — Noteforge{% endblock %}
+{% block topbar_title %}AI Assessment Engine{% endblock %}
+
+{% block content %}
+<style>
+  .quiz-cfg-wrap .form-control,
+  .quiz-cfg-wrap .form-select {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px !important;
+    color: #1e293b;
+    padding: 0.55rem 0.85rem !important;
+    border-color: #cbd5e1;
+    border-radius: 8px;
+  }
+  .quiz-cfg-wrap .form-control:focus,
+  .quiz-cfg-wrap .form-select:focus {
+    border-color: var(--nf-indigo);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  }
+  .quiz-cfg-wrap .form-control:disabled,
+  .quiz-cfg-wrap .form-select:disabled {
+    background-color: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+  }
+  .quiz-cfg-wrap .form-label {
+    font-size: 12.5px !important;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.35rem;
+  }
+  .step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .step-pill.active {
+    background-color: var(--nf-indigo);
+    color: #ffffff;
+  }
+  .step-pill.upcoming {
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px dashed #cbd5e1;
+  }
+  /* Study Material picker */
+  #pdfPickerList {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 768px) {
+    #pdfPickerList { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 480px) {
+    #pdfPickerList { grid-template-columns: 1fr; }
+  }
+  .pdf-item {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    user-select: none;
+  }
+  .pdf-item:hover {
+    border-color: #a5b4fc;
+    background: #f8faff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+  }
+  .pdf-item.selected {
+    border-color: var(--nf-indigo);
+    background: #eef2ff;
+    box-shadow: 0 0 0 1.5px var(--nf-indigo);
+  }
+  .pdf-item input[type="radio"] {
+    accent-color: var(--nf-indigo);
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .pdf-icon { font-size: 20px; flex-shrink: 0; }
+  .pdf-title { font-size: 13px; font-weight: 600; color: #1e293b; line-height: 1.35; }
+  .pdf-meta { font-size: 11px; color: #64748b; }
+  .upload-new-toggle {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    border: 1.5px dashed #cbd5e1; background: #f8fafc;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .upload-new-toggle:hover { border-color: var(--nf-indigo); }
+  .upload-new-toggle.open { border-color: var(--nf-indigo); background: #f0f4ff; }
+  #uploadNewBox { display: none; }
+  #uploadNewBox.open { display: block; }
+  #pdfPickerEmpty { font-size: 12.5px; color: #94a3b8; text-align: center; padding: 16px 0; }
+  #pdfPickerLoading { font-size: 12.5px; color: #6366f1; text-align: center; padding: 12px 0; }
+</style>
+
+<div class="row justify-content-center py-2">
+  <div class="col-lg-9 col-xl-8">
+
+    <!-- Stepper -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 px-1">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 fw-semibold">Step 2 of 3</span>
+        <span class="text-secondary small fw-medium">Test Configuration &amp; Curriculum Upload</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="step-pill upcoming"><i class="bi bi-1-circle"></i> 1. Select Batch</span>
+        <i class="bi bi-chevron-right text-muted small"></i>
+        <span class="step-pill active shadow-xs"><i class="bi bi-2-circle-fill"></i> 2. Configure Test</span>
+        <i class="bi bi-chevron-right text-muted small"></i>
+        <span class="step-pill upcoming"><i class="bi bi-3-circle"></i> 3. Review &amp; Publish</span>
+      </div>
+    </div>
+
+    <div class="quiz-cfg-wrap card bg-white p-4 p-md-5 shadow-sm border-0 rounded-3" style="border: 1px solid #eef2f6 !important;">
+
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <div>
+          <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-sliders2-vertical" style="color: var(--nf-indigo) !important;"></i>
+            <span>MCQ Test Configuration</span>
+          </h5>
+          <p class="text-secondary small mb-0">Set parameters and choose the source study material (PDF, PPT, Word, etc.) for this assessment.</p>
+        </div>
+        <a href="{% url 'teacher_quiz_list' %}" class="btn btn-sm btn-light border rounded-pill px-3">← Back to Quizzes</a>
+      </div>
+
+      {% if assigned_subs_count == 0 %}
+      <div class="alert alert-warning border-warning-subtle bg-warning-subtle text-warning-emphasis py-2 px-3 rounded-3 small mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        You have not been assigned any subjects yet. Contact the administrator.
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" novalidate id="quizForm">
+        {% csrf_token %}
+        {% if locked_batch %}
+          <input type="hidden" name="_locked_batch" value="{{ locked_batch.pk }}">
+          <input type="hidden" name="batch" value="{{ locked_batch.pk }}">
+        {% endif %}
+        <!-- Hidden field to carry selected existing material pk -->
+        <input type="hidden" name="selected_material_pk" id="selectedMaterialPk" value="">
+
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger border-0 rounded-3 py-2 px-3 small mb-3">
+          {% for err in form.non_field_errors %}
+            <div><i class="bi bi-x-circle me-1"></i>{{ err }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Locked Batch Banner -->
+        {% if locked_batch %}
+        <div class="mb-4 p-3 rounded-3 d-flex align-items-center gap-3" style="background:#f0f4ff; border:1px solid #c7d2fe;">
+          <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:36px;height:36px;background:var(--nf-indigo);">
+            <i class="bi bi-people-fill text-white" style="font-size:14px;"></i>
+          </div>
+          <div>
+            <div class="fw-semibold text-dark" style="font-size:13.5px;">{{ locked_batch.name }}</div>
+            {% if locked_batch.current_semester %}
+              <div class="text-secondary" style="font-size:11.5px;">Currently on Semester {{ locked_batch.current_semester.number }}</div>
+            {% endif %}
+          </div>
+          <span class="ms-auto badge rounded-pill px-3 py-1 fw-semibold" style="background:#e0e7ff;color:#4338ca;font-size:11px;">Target Batch</span>
+        </div>
+        {% endif %}
+
+        <!-- Test Title -->
+        <div class="mb-4">
+          <label class="form-label">Test Title <span class="text-danger">*</span></label>
+          {{ form.title }}
+          {% if form.title.errors %}
+            <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ form.title.errors.0 }}</div>
+          {% else %}
+            <div class="form-text text-muted" style="font-size:11.5px;">Descriptive title for students (e.g. Unit 2 Quiz — Memory Hierarchy).</div>
+          {% endif %}
+        </div>
+
+        <!-- Semester & Subject -->
+        <div class="row g-3 mb-4">
+          <!-- Semester (disabled — locked to batch) -->
+          <div class="col-md-6">
+            <label class="form-label">Semester <span class="text-danger">*</span></label>
+            {% if locked_semester %}
+              {# Show as a locked display field #}
+              <select class="form-select" disabled>
+                <option selected>Semester {{ locked_semester.number }}</option>
+              </select>
+              {# Hidden real input for form submission #}
+              <input type="hidden" name="semester" value="{{ locked_semester.pk }}">
+            {% else %}
+              {{ form.semester }}
+            {% endif %}
+            {% if form.semester.errors %}
+              <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ form.semester.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Subject -->
+          <div class="col-md-6">
+            <label class="form-label">Subject Course <span class="text-danger">*</span></label>
+            <select name="subject" class="form-select" id="id_subject" required>
+              <option value="">— Select Subject —</option>
+              {% comment %}Populated by JS on page load{% endcomment %}
+            </select>
+            {% if form.subject.errors %}
+              <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ form.subject.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Source Study Material Section -->
+        <div class="mb-4" id="pdfSection">
+          <label class="form-label d-block">Source Study Material <span class="text-danger">*</span></label>
+
+          <!-- Existing materials list (shown after subject selected) -->
+          <div id="pdfPickerWrap" style="display:none;">
+            <div id="pdfPickerLoading" style="display:none;"><i class="bi bi-arrow-repeat me-1"></i>Loading materials...</div>
+            <div id="pdfPickerList" class="mb-2"></div>
+            <div id="pdfPickerEmpty" style="display:none;">
+              <i class="bi bi-inbox fs-4 d-block mb-1 opacity-40"></i>No study materials uploaded yet for this subject.
+            </div>
+
+            <!-- Upload New toggle -->
+            <div class="upload-new-toggle mt-2" id="uploadNewToggle" onclick="toggleUploadNew()">
+              <i class="bi bi-upload text-primary"></i>
+              <span style="font-size:13px; font-weight:600; color:#334155;">Upload a new document</span>
+              <i class="bi bi-chevron-down ms-auto text-muted small" id="uploadChevron"></i>
+            </div>
+            <div id="uploadNewBox" class="mt-2 p-3 rounded-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+              {{ form.pdf_file }}
+              {% if form.pdf_file.errors %}
+                <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ form.pdf_file.errors.0 }}</div>
+              {% endif %}
+              <div class="form-text text-muted mt-1" style="font-size:11.5px;">Supported: PDF, PPTX, PPT, DOCX, DOC, TXT · Max 35 MB</div>
+            </div>
+          </div>
+
+          <!-- Placeholder before subject is picked -->
+          <div id="pdfPickerPlaceholder" class="p-3 rounded-3 text-center text-muted small" style="border:1.5px dashed #cbd5e1; background:#f8fafc;">
+            <i class="bi bi-file-earmark-text fs-4 d-block mb-1 opacity-30 text-secondary"></i>
+            Select a subject above to see available study materials (PDF, PPT, DOCX, etc.)
+          </div>
+          <div class="text-danger small mt-1" id="pdfError" style="display:none;"><i class="bi bi-exclamation-circle me-1"></i>Please select or upload a study material.</div>
+        </div>
+
+        <!-- Assessment Parameters -->
+        <div class="p-3 rounded-3 mb-4" style="background-color:#f8fafc; border:1px solid #e2e8f0;">
+          <h6 class="fw-bold text-dark mb-3 small text-uppercase" style="letter-spacing:0.05em;">
+            <i class="bi bi-gear-wide-connected me-1 text-primary"></i>Assessment Parameters
+          </h6>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">Questions <span class="text-danger">*</span></label>
+              {{ form.num_questions }}
+              {% if form.num_questions.errors %}
+                <div class="text-danger small mt-1">{{ form.num_questions.errors.0 }}</div>
+              {% else %}
+                <div class="text-muted small mt-1" style="font-size:11px;">1 to 50 items</div>
+              {% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Time Limit <span class="text-danger">*</span></label>
+              <div class="input-group">
+                {{ form.time_limit_mins }}
+                <span class="input-group-text bg-white border-start-0 text-muted" style="font-size:12px;">mins</span>
+              </div>
+              {% if form.time_limit_mins.errors %}
+                <div class="text-danger small mt-1">{{ form.time_limit_mins.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="mb-4">
+          <label class="form-label">Instructions / Description <span class="text-muted fw-normal">(Optional)</span></label>
+          {{ form.description }}
+        </div>
+
+        <!-- Submit -->
+        <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+          <span class="text-muted small">
+            <i class="bi bi-shield-check text-success me-1"></i>Secure storage &bull; Synthesizes questions automatically
+          </span>
+          <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'teacher_quiz_list' %}" class="btn btn-light border rounded-pill px-4" style="font-size:13px;">Cancel</a>
+            <button type="submit" id="submitBtn" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm d-inline-flex align-items-center gap-1.5" style="font-size:13px;">
+              <i class="bi bi-check2-circle" id="btnIcon"></i>
+              <span id="btnText">Save Test Configuration</span>
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Constants ────────────────────────────────────────────────────────────────
+  const SUBJECTS_API    = '/teacher/api/subjects/';
+  const MATERIALS_API   = '/teacher/api/subject-materials/';
+  {% if locked_semester %}
+  const LOCKED_SEM_ID   = '{{ locked_semester.pk }}';
+  {% else %}
+  const LOCKED_SEM_ID   = null;
+  {% endif %}
+
+  // ── Subject loading ──────────────────────────────────────────────────────────
+  function loadSubjectsForSem(semId, preSelectSubId) {
+    const subSelect = document.getElementById('id_subject');
+    subSelect.innerHTML = '<option value="">Loading...</option>';
+    subSelect.disabled = true;
+
+    fetch(`${SUBJECTS_API}?sem=${semId}`)
+      .then(r => r.json())
+      .then(data => {
+        subSelect.innerHTML = '<option value="">— Select Subject —</option>';
+        subSelect.disabled = false;
+        if (data.subjects && data.subjects.length > 0) {
+          data.subjects.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = `${s.code} — ${s.name}`;
+            if (preSelectSubId && String(s.id) === String(preSelectSubId)) opt.selected = true;
+            subSelect.appendChild(opt);
+          });
+        } else {
+          subSelect.innerHTML = '<option value="">No subjects assigned for this semester</option>';
+        }
+        // If a subject was pre-selected (e.g. form re-render after error), load its PDFs
+        if (subSelect.value) loadMaterialsForSubject(subSelect.value);
+      })
+      .catch(() => {
+        subSelect.innerHTML = '<option value="">— Select Subject —</option>';
+        subSelect.disabled = false;
+      });
+  }
+
+  // ── Material / PDF loading ───────────────────────────────────────────────────
+  function loadMaterialsForSubject(subId) {
+    const wrap    = document.getElementById('pdfPickerWrap');
+    const ph      = document.getElementById('pdfPickerPlaceholder');
+    const loading = document.getElementById('pdfPickerLoading');
+    const list    = document.getElementById('pdfPickerList');
+    const empty   = document.getElementById('pdfPickerEmpty');
+
+    if (!subId) {
+      wrap.style.display = 'none';
+      ph.style.display   = 'block';
+      return;
+    }
+
+    ph.style.display      = 'none';
+    wrap.style.display    = 'block';
+    loading.style.display = 'block';
+    list.innerHTML        = '';
+    empty.style.display   = 'none';
+    clearMaterialSelection();
+
+    fetch(`${MATERIALS_API}?subject=${subId}`)
+      .then(r => r.json())
+      .then(data => {
+        loading.style.display = 'none';
+        const mats = data.materials || [];
+        if (mats.length === 0) {
+          empty.style.display = 'block';
+        } else {
+          mats.forEach(m => {
+            const item = document.createElement('label');
+            item.className = 'pdf-item';
+            const ext = (m.ext || 'FILE').toUpperCase();
+            let iconClass = 'bi-file-earmark-pdf-fill text-danger';
+            let badgeClass = 'bg-danger-subtle text-danger border border-danger-subtle';
+            if (ext === 'PPTX' || ext === 'PPT') {
+              iconClass = 'bi-file-earmark-slides-fill text-warning';
+              badgeClass = 'bg-warning-subtle text-warning-emphasis border border-warning-subtle';
+            } else if (ext === 'DOCX' || ext === 'DOC') {
+              iconClass = 'bi-file-earmark-word-fill text-primary';
+              badgeClass = 'bg-primary-subtle text-primary border border-primary-subtle';
+            } else if (ext === 'TXT') {
+              iconClass = 'bi-file-earmark-text-fill text-secondary';
+              badgeClass = 'bg-secondary-subtle text-secondary border border-secondary-subtle';
+            }
+            item.innerHTML = `
+              <div class="d-flex align-items-center justify-content-between w-100 mb-2">
+                <div class="d-flex align-items-center gap-2">
+                  <input type="radio" name="_mat_radio" value="${m.id}" onchange="selectMaterial(${m.id}, this.closest('.pdf-item'))">
+                  <i class="bi ${iconClass} pdf-icon"></i>
+                </div>
+                <span class="badge ${badgeClass} rounded-pill px-2 py-0 fw-semibold" style="font-size:10px;">${ext}</span>
+              </div>
+              <div class="pdf-title text-truncate mb-2" title="${m.title}">${m.title}</div>
+              <div class="d-flex align-items-center justify-content-between mt-auto pt-2 border-top" style="border-color: #f1f5f9 !important;">
+                <span class="pdf-meta">Uploaded material</span>
+                <a href="${m.url}" target="_blank" class="btn btn-xs btn-light border rounded-pill px-2 py-0 text-secondary" style="font-size:10.5px; line-height: 1.6;" onclick="event.stopPropagation();">
+                  <i class="bi bi-eye"></i> View
+                </a>
+              </div>`;
+            list.appendChild(item);
+          });
+        }
+      })
+      .catch(() => { loading.style.display = 'none'; empty.style.display = 'block'; });
+  }
+
+  function selectMaterial(id, itemEl) {
+    document.querySelectorAll('.pdf-item').forEach(el => el.classList.remove('selected'));
+    if (itemEl) itemEl.classList.add('selected');
+    document.getElementById('selectedMaterialPk').value = id;
+    // Hide the upload-new box when an existing PDF is selected
+    closeUploadNew();
+  }
+
+  function clearMaterialSelection() {
+    document.getElementById('selectedMaterialPk').value = '';
+    document.querySelectorAll('.pdf-item').forEach(el => el.classList.remove('selected'));
+  }
+
+  // ── Upload new toggle ────────────────────────────────────────────────────────
+  function toggleUploadNew() {
+    const box      = document.getElementById('uploadNewBox');
+    const toggle   = document.getElementById('uploadNewToggle');
+    const chevron  = document.getElementById('uploadChevron');
+    const isOpen   = box.classList.contains('open');
+    if (isOpen) {
+      closeUploadNew();
+    } else {
+      box.classList.add('open');
+      toggle.classList.add('open');
+      chevron.className = 'bi bi-chevron-up ms-auto text-muted small';
+      // Clear any existing material selection when uploading new
+      clearMaterialSelection();
+      document.querySelectorAll('input[name="_mat_radio"]').forEach(r => r.checked = false);
+    }
+  }
+
+  function closeUploadNew() {
+    const box     = document.getElementById('uploadNewBox');
+    const toggle  = document.getElementById('uploadNewToggle');
+    const chevron = document.getElementById('uploadChevron');
+    box.classList.remove('open');
+    toggle.classList.remove('open');
+    chevron.className = 'bi bi-chevron-down ms-auto text-muted small';
+  }
+
+  // ── Form submit validation ────────────────────────────────────────────────────
+  document.getElementById('quizForm').addEventListener('submit', function(e) {
+    const matPk   = document.getElementById('selectedMaterialPk').value;
+    const fileIn  = document.querySelector('input[name="pdf_file"]');
+    const hasFile = fileIn && fileIn.files && fileIn.files.length > 0;
+    const pdfErr  = document.getElementById('pdfError');
+
+    if (!matPk && !hasFile) {
+      e.preventDefault();
+      pdfErr.style.display = 'block';
+      document.getElementById('pdfSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    pdfErr.style.display = 'none';
+
+    if (this.checkValidity()) {
+      const btn  = document.getElementById('submitBtn');
+      const icon = document.getElementById('btnIcon');
+      const text = document.getElementById('btnText');
+      if (btn) { btn.disabled = true; btn.classList.add('opacity-75'); }
+      if (icon) icon.className = 'spinner-border spinner-border-sm me-1';
+      if (text) text.innerText = 'Synthesizing Questions & Review Sheet...';
+    }
+  });
+
+  // ── Subject dropdown change ───────────────────────────────────────────────────
+  document.getElementById('id_subject').addEventListener('change', function() {
+    loadMaterialsForSubject(this.value);
+    clearMaterialSelection();
+    document.querySelectorAll('input[name="_mat_radio"]').forEach(r => r.checked = false);
+    closeUploadNew();
+  });
+
+  // ── On page load ──────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    if (LOCKED_SEM_ID) {
+      // Pre-selected subject (if form re-render after error)
+      const preSubId = '{{ form.subject.value|default:"" }}';
+      loadSubjectsForSem(LOCKED_SEM_ID, preSubId);
+    }
+  });
+</script>
+{% endblock %}

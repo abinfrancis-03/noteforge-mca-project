@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Subject — Noteforge{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-3">
+  <div class="col-md-9 col-lg-7">
+    <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-book fs-5" style="color: var(--nf-indigo) !important;"></i> {{ action }} Subject
+        </h5>
+        <a href="{% url 'subject_list' %}{% if selected_dept %}?dept={{ selected_dept.pk }}{% if selected_sem %}&sem={{ selected_sem.pk }}{% endif %}{% endif %}" class="btn btn-sm btn-light border rounded-pill px-3">← Back</a>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:request.META.HTTP_REFERER }}">
+        <input type="hidden" name="dept_id" value="{{ selected_dept.pk|default:'' }}">
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark small">Department</label>
+          {% if selected_dept and action == 'Add' %}
+            <input type="text" class="form-control bg-light" value="{{ selected_dept.name }}" disabled>
+          {% else %}
+            <select name="dept_display" id="deptSelect" class="form-select" onchange="loadSemesters()" {% if action == 'Edit' %}disabled{% endif %}>
+              <option value="">— Select Department —</option>
+              {% for d in departments %}
+              <option value="{{ d.pk }}" {% if selected_dept and selected_dept.pk == d.pk %}selected{% endif %}>{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark small">Semester</label>
+          {% if selected_sem and action == 'Add' %}
+            <input type="text" class="form-control bg-light" value="Semester {{ selected_sem.number }}" disabled>
+            <input type="hidden" name="semester" value="{{ selected_sem.pk }}">
+          {% else %}
+            <select name="semester" id="semSelect" class="form-select" required {% if action == 'Edit' %}disabled{% endif %}>
+              <option value="">— Select Semester —</option>
+              {% for s in semesters %}
+              <option value="{{ s.pk }}" {% if selected_sem and selected_sem.pk == s.pk %}selected{% elif sub and sub.semester_id == s.pk %}selected{% endif %}>Semester {{ s.number }}</option>
+              {% endfor %}
+            </select>
+            {% if action == 'Edit' %}
+            <input type="hidden" name="semester" value="{{ sub.semester_id }}">
+            {% endif %}
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark small">Subject Name</label>
+          <input type="text" name="name" class="form-control" value="{{ sub.name|default:'' }}" placeholder="e.g. Data Structures and Algorithms" required>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6">
+            <label class="form-label fw-semibold text-dark small">Subject Code</label>
+            <input type="text" name="subject_code" class="form-control" value="{{ sub.subject_code|default:'' }}" placeholder="e.g. MCA101" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold text-dark small">Credits</label>
+            <input type="number" name="credits" class="form-control" value="{{ sub.credits|default:'0' }}" min="0" max="10" placeholder="e.g. 4">
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">{{ action }} Subject</button>
+          <a href="{% url 'subject_list' %}{% if selected_dept %}?dept={{ selected_dept.pk }}{% if selected_sem %}&sem={{ selected_sem.pk }}{% endif %}{% endif %}" class="btn btn-light border btn-pill px-4 text-dark fw-semibold">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% if not selected_dept or not selected_sem %}
+<script>
+  function loadSemesters() {
+    const deptId = document.getElementById('deptSelect').value;
+    const semSel = document.getElementById('semSelect');
+    semSel.innerHTML = '<option value="">Loading...</option>';
+    if (!deptId) { semSel.innerHTML = '<option value="">— Select Semester —</option>'; return; }
+    fetch(`/admin-panel/api/semesters/?dept=${deptId}`)
+      .then(r => r.json())
+      .then(data => {
+        semSel.innerHTML = '<option value="">— Select Semester —</option>';
+        data.semesters.forEach(s => {
+          semSel.innerHTML += `<option value="${s.id}">${s.label}</option>`;
+        });
+      });
+  }
+</script>
+{% endif %}
+{% endblock %}

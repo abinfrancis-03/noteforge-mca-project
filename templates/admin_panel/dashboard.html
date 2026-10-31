@@ -1,0 +1,527 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard — Noteforge{% endblock %}
+{% block topbar_title %}Infrastructure Overview{% endblock %}
+
+{% block content %}
+<style>
+  .dash-kpi-card {
+    border-radius: 14px;
+    border: 1px solid #eef2f6 !important;
+    transition: all 0.2s ease-in-out;
+    background: #ffffff;
+  }
+  .dash-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+  }
+  .kpi-icon-wrap {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+  }
+  .pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #10b981;
+    display: inline-block;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+
+  /* Timeline stream */
+  .timeline-item {
+    position: relative;
+    padding-left: 36px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 26px;
+    bottom: -14px;
+    width: 2px;
+    background: #f1f5f9;
+  }
+  .timeline-item:last-child::before {
+    display: none;
+  }
+  .timeline-icon-dot {
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    z-index: 2;
+  }
+
+  .dept-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(79, 70, 229, 0.08);
+    color: var(--nf-indigo);
+    font-weight: 700;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.02em;
+  }
+
+  .chart-card {
+    border-radius: 14px;
+    border: 1px solid #eef2f6 !important;
+    background: #ffffff;
+  }
+</style>
+
+<!-- Page Header Banner -->
+<div class="mb-4">
+  <h4 class="fw-bold text-dark mb-1">System Infrastructure Dashboard</h4>
+  <p class="text-secondary small mb-0">Academic provisioning, user adoption, storage health, and real-time audit stream</p>
+</div>
+
+<!-- Top Row: 4 Metric KPI Cards (with subtle trend & micro-indicators) -->
+<div class="row g-3 mb-4">
+  <!-- 1. Departments -->
+  <div class="col-12 col-sm-6 col-lg-3">
+    <div class="dash-kpi-card h-100 p-4 shadow-sm">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Departments</span>
+        <div class="kpi-icon-wrap bg-primary bg-opacity-10 text-primary" style="color: var(--nf-indigo) !important;">
+          <i class="bi bi-building fs-5"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2 mb-2">
+        <h2 class="fw-bold text-dark mb-0" style="font-size: 1.9rem;">{{ total_departments }}</h2>
+        <span class="text-secondary small">Tracks</span>
+      </div>
+      <div class="d-flex align-items-center justify-content-between text-muted pt-2 border-top border-light-subtle" style="font-size: 11.5px;">
+        <span><i class="bi bi-mortarboard me-1 text-primary"></i>{{ total_batches }} Total Batches</span>
+        <span class="badge bg-primary-subtle text-primary">{{ ongoing_batches_count }} Ongoing</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Faculty -->
+  <div class="col-12 col-sm-6 col-lg-3">
+    <div class="dash-kpi-card h-100 p-4 shadow-sm">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Faculty</span>
+        <div class="kpi-icon-wrap bg-warning bg-opacity-10 text-warning">
+          <i class="bi bi-person-badge fs-5"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2 mb-2">
+        <h2 class="fw-bold text-dark mb-0" style="font-size: 1.9rem;">{{ total_teachers }}</h2>
+        <span class="text-secondary small">Educators</span>
+      </div>
+      <div class="d-flex align-items-center justify-content-between text-muted pt-2 border-top border-light-subtle" style="font-size: 11.5px;">
+        <span><i class="bi bi-shield-check me-1 text-success"></i>Onboarded</span>
+        {% if pending_teacher_logins > 0 %}
+          <span class="badge bg-warning-subtle text-warning-emphasis">{{ pending_teacher_logins }} Pending</span>
+        {% else %}
+          <span class="badge bg-success-subtle text-success">All Active</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Students -->
+  <div class="col-12 col-sm-6 col-lg-3">
+    <div class="dash-kpi-card h-100 p-4 shadow-sm">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Enrolled Students</span>
+        <div class="kpi-icon-wrap bg-success bg-opacity-10 text-success">
+          <i class="bi bi-people fs-5"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2 mb-2">
+        <h2 class="fw-bold text-dark mb-0" style="font-size: 1.9rem;">{{ total_ongoing_students }}</h2>
+        <span class="text-secondary small">Active</span>
+      </div>
+      <div class="d-flex align-items-center justify-content-between text-muted pt-2 border-top border-light-subtle" style="font-size: 11.5px;">
+        <span><i class="bi bi-mortarboard me-1 text-info"></i>Ongoing Batches</span>
+        {% if pending_student_logins > 0 %}
+          <span class="badge bg-danger-subtle text-danger">{{ pending_student_logins }} Pending</span>
+        {% else %}
+          <span class="badge bg-success-subtle text-success">All Verified</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Study Materials & Storage -->
+  <div class="col-12 col-sm-6 col-lg-3">
+    <div class="dash-kpi-card h-100 p-4 shadow-sm">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.06em;">Course Materials</span>
+        <div class="kpi-icon-wrap bg-info bg-opacity-10 text-info">
+          <i class="bi bi-file-earmark-pdf fs-5"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2 mb-2">
+        <h2 class="fw-bold text-dark mb-0" style="font-size: 1.9rem;">{{ total_materials }}</h2>
+        <span class="text-secondary small">Files</span>
+      </div>
+      <div class="d-flex align-items-center justify-content-between text-muted pt-2 border-top border-light-subtle" style="font-size: 11.5px;">
+        <span><i class="bi bi-hdd-network me-1 text-primary"></i>Cloud Storage</span>
+        <span class="badge bg-light text-dark border">{{ total_storage_mb }} MB</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Middle Row (Charts) -->
+<div class="row g-4 mb-4">
+  <!-- Left (60%): Department Student & Teacher Distribution Chart -->
+  <div class="col-lg-7">
+    <div class="chart-card p-4 shadow-sm h-100">
+      <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-light-subtle">
+        <div class="d-flex align-items-center gap-2">
+          <div class="btn-circle bg-primary bg-opacity-10 text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+            <i class="bi bi-bar-chart-fill fs-6" style="color: var(--nf-indigo) !important;"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-dark mb-0">Department Academic Distribution</h6>
+            <span class="text-muted" style="font-size: 11.5px;">Comparative ratio of enrolled students vs. faculty members</span>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-3" style="font-size: 12px;">
+          <span class="d-inline-flex align-items-center text-secondary">
+            <span style="width: 10px; height: 10px; border-radius: 3px; background-color: #4f46e5; display: inline-block; margin-right: 6px;"></span> Students
+          </span>
+          <span class="d-inline-flex align-items-center text-secondary">
+            <span style="width: 10px; height: 10px; border-radius: 3px; background-color: #cbd5e1; display: inline-block; margin-right: 6px;"></span> Faculty
+          </span>
+        </div>
+      </div>
+      
+      <!-- Chart Canvas -->
+      <div style="position: relative; height: 260px; width: 100%;">
+        <canvas id="deptDistributionChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right (40%): User Account Health (Active vs Pending Donut) & Storage Gauge -->
+  <div class="col-lg-5">
+    <div class="chart-card p-4 shadow-sm h-100 d-flex flex-column justify-content-between">
+      <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-light-subtle">
+        <div class="d-flex align-items-center gap-2">
+          <div class="btn-circle bg-success bg-opacity-10 text-success" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+            <i class="bi bi-pie-chart-fill fs-6"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-dark mb-0">User Account Health &amp; Storage</h6>
+            <span class="text-muted" style="font-size: 11.5px;">Account onboarding adoption and cloud quota</span>
+          </div>
+        </div>
+        <span class="badge bg-success-subtle text-success py-1 px-2 rounded-pill fw-semibold" style="font-size: 11px;">
+          {{ active_users_pct }}% Active
+        </span>
+      </div>
+
+      <!-- Donut Chart & Legend Row -->
+      <div class="row align-items-center g-3 my-auto py-2">
+        <div class="col-5 text-center">
+          <div style="position: relative; height: 145px; width: 100%;">
+            <canvas id="accountHealthChart"></canvas>
+          </div>
+        </div>
+        <div class="col-7 ps-2">
+          <div class="d-flex flex-column gap-3">
+            <!-- Active Accounts Item -->
+            <div>
+              <div class="d-flex align-items-center justify-content-between mb-0.5">
+                <div class="d-flex align-items-center">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #4f46e5; flex-shrink: 0; margin-right: 8px;"></span>
+                  <span class="text-dark fw-semibold" style="font-size: 12.5px;">Active Accounts</span>
+                </div>
+                <span class="fw-bold text-dark" style="font-size: 14px;">{{ total_active_users }}</span>
+              </div>
+              <div class="text-muted" style="font-size: 11px; padding-left: 16px;">Logged in &amp; verified</div>
+            </div>
+
+            <!-- Pending Activation Item -->
+            <div>
+              <div class="d-flex align-items-center justify-content-between mb-0.5">
+                <div class="d-flex align-items-center">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; flex-shrink: 0; margin-right: 8px;"></span>
+                  <span class="text-dark fw-semibold" style="font-size: 12.5px;">Pending Activation</span>
+                </div>
+                <span class="fw-bold text-secondary" style="font-size: 14px;">{{ total_pending_users }}</span>
+              </div>
+              <div class="text-muted" style="font-size: 11px; padding-left: 16px;">Initial login pending</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Storage Gauge Sub-widget -->
+      <div class="pt-3 mt-3 border-top border-light-subtle">
+        <div class="d-flex align-items-center justify-content-between mb-1.5" style="font-size: 12px;">
+          <span class="text-secondary fw-semibold">
+            <i class="bi bi-hdd-network text-info me-1"></i>Storage Capacity (1 GB Plan)
+          </span>
+          <span class="fw-bold text-dark">{{ total_storage_mb }} MB <span class="text-muted fw-normal">({{ storage_pct }}%)</span></span>
+        </div>
+        <div class="progress" style="height: 7px; border-radius: 10px; background-color: #f1f5f9;">
+          <div class="progress-bar bg-info" role="progressbar" style="width: {{ storage_pct }}%; border-radius: 10px;" aria-valuenow="{{ storage_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Row -->
+<div class="row g-4">
+  <!-- Left: Departments Overview with quick progress bars -->
+  <div class="col-lg-7">
+    <div class="chart-card h-100 shadow-sm overflow-hidden">
+      <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom border-light-subtle">
+        <div class="d-flex align-items-center gap-2">
+          <div class="btn-circle bg-primary bg-opacity-10 text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+            <i class="bi bi-building fs-6" style="color: var(--nf-indigo) !important;"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-dark mb-0">Departments Overview</h6>
+            <span class="text-muted" style="font-size: 11.5px;">Active semester student enrollments and academic faculty</span>
+          </div>
+        </div>
+        <a href="{% url 'department_list' %}" class="btn btn-sm btn-light border rounded-pill px-3 py-1 text-dark fw-semibold" style="font-size: 12px;">Manage All →</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light bg-opacity-50">
+            <tr>
+              <th class="ps-4 text-muted small fw-semibold">Department</th>
+              <th class="text-muted small fw-semibold">Code</th>
+              <th class="text-center text-muted small fw-semibold">Faculty</th>
+              <th class="pe-4 text-center text-muted small fw-semibold">Students</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in updated_departments %}
+            <tr>
+              <td class="ps-4">
+                <strong class="text-dark d-block" style="font-size: 12.5px;">{{ d.name }}</strong>
+              </td>
+              <td>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 font-monospace" style="font-size: 10.5px;">{{ d.code }}</span>
+              </td>
+              <td class="text-center">
+                <span class="badge bg-light text-dark border px-2.5 py-1" style="font-size: 11px; font-weight: 600;">
+                  <i class="bi bi-person-badge text-warning-emphasis me-1"></i>{{ d.teacher_count }}
+                </span>
+              </td>
+              <td class="pe-4 text-center">
+                <span class="fw-bold text-dark" style="font-size: 12.5px;">{{ d.student_count }}</span>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-5 small">
+                <i class="bi bi-building-slash fs-2 d-block mb-2 opacity-50"></i>
+                No departments configured yet. <a href="{% url 'department_add' %}" class="fw-semibold">Add First Department →</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Interactive System Activity Timeline -->
+  <div class="col-lg-5">
+    <div class="chart-card h-100 shadow-sm overflow-hidden">
+      <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom border-light-subtle">
+        <div class="d-flex align-items-center gap-2">
+          <div class="btn-circle bg-info bg-opacity-10 text-info" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+            <i class="bi bi-clock-history fs-6"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-dark mb-0">System Activity Timeline</h6>
+            <span class="text-muted" style="font-size: 11.5px;">Live administrative action log</span>
+          </div>
+        </div>
+        <a href="{% url 'audit_log' %}" class="btn btn-sm btn-light border rounded-pill px-3 py-1 text-dark fw-semibold" style="font-size: 12px;">Full Log →</a>
+      </div>
+
+      <div class="card-body p-4">
+        <div class="activity-timeline">
+          {% for log in recent_logs %}
+          <div class="timeline-item pb-3 mb-3">
+            <!-- Action Icon Dot -->
+            <div class="timeline-icon-dot shadow-xs">
+              {% if log.action == 'create' %}
+                <i class="bi bi-plus-circle-fill text-success" title="Created"></i>
+              {% elif log.action == 'update' %}
+                <i class="bi bi-pencil-fill text-primary" title="Updated"></i>
+              {% elif log.action == 'delete' %}
+                <i class="bi bi-trash-fill text-danger" title="Deleted"></i>
+              {% elif log.action == 'reset' %}
+                <i class="bi bi-key-fill text-warning" title="Password Reset"></i>
+              {% else %}
+                <i class="bi bi-box-arrow-in-right text-secondary" title="Login / Auth"></i>
+              {% endif %}
+            </div>
+
+            <!-- Event Narrative Content -->
+            <div>
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="fw-semibold text-dark" style="font-size: 12.5px;">
+                  {{ log.actor.get_full_name|default:log.actor.username|default:"System" }}
+                  <span class="text-muted fw-normal" style="font-size: 11.5px;">
+                    {% if log.action == 'create' %}created
+                    {% elif log.action == 'update' %}updated
+                    {% elif log.action == 'delete' %}removed
+                    {% elif log.action == 'reset' %}reset password for
+                    {% else %}performed action on{% endif %}
+                    <strong>{{ log.target_model }}</strong>
+                  </span>
+                </span>
+                <span class="text-muted" style="font-size: 11px; white-space: nowrap;">{{ log.timestamp|timesince }} ago</span>
+              </div>
+              <p class="text-secondary small mb-0 lh-sm" style="font-size: 12px;">
+                {{ log.description|truncatechars:90 }}
+              </p>
+            </div>
+          </div>
+          {% empty %}
+          <div class="text-center text-muted py-5 small">
+            <i class="bi bi-shield-check fs-2 d-block mb-2 opacity-50 text-success"></i>
+            No system activity recorded yet.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js Library & Initialization Script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 1. Department Student & Faculty Distribution Grouped Bar Chart
+    const deptLabels = {{ dept_chart_labels|safe }};
+    const deptStudents = {{ dept_chart_students|safe }};
+    const deptTeachers = {{ dept_chart_teachers|safe }};
+
+    const ctxDept = document.getElementById('deptDistributionChart');
+    if (ctxDept && deptLabels.length > 0) {
+      new Chart(ctxDept, {
+        type: 'bar',
+        data: {
+          labels: deptLabels,
+          datasets: [
+            {
+              label: 'Students',
+              data: deptStudents,
+              backgroundColor: '#4f46e5',
+              borderRadius: 6,
+              barPercentage: 0.6,
+              categoryPercentage: 0.6
+            },
+            {
+              label: 'Faculty',
+              data: deptTeachers,
+              backgroundColor: '#cbd5e1',
+              borderRadius: 6,
+              barPercentage: 0.6,
+              categoryPercentage: 0.6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleFont: { family: 'Plus Jakarta Sans', size: 12 },
+              bodyFont: { family: 'Plus Jakarta Sans', size: 12 },
+              padding: 10,
+              cornerRadius: 8
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { family: 'Plus Jakarta Sans', size: 11, weight: '600' },
+                color: '#64748b'
+              }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                precision: 0,
+                font: { family: 'Plus Jakarta Sans', size: 11 },
+                color: '#94a3b8'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. User Account Health Donut Chart
+    const activeUsers = {{ total_active_users }};
+    const pendingUsers = {{ total_pending_users }};
+
+    const ctxHealth = document.getElementById('accountHealthChart');
+    if (ctxHealth) {
+      new Chart(ctxHealth, {
+        type: 'doughnut',
+        data: {
+          labels: ['Active Verified', 'Pending Login'],
+          datasets: [{
+            data: [activeUsers || (pendingUsers ? 0 : 1), pendingUsers],
+            backgroundColor: ['#4f46e5', '#cbd5e1'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '72%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleFont: { family: 'Plus Jakarta Sans', size: 12 },
+              bodyFont: { family: 'Plus Jakarta Sans', size: 12 },
+              padding: 10,
+              cornerRadius: 8
+            }
+          }
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

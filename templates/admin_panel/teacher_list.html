@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}Teachers — Noteforge{% endblock %}
+{% block topbar_title %}Faculty Management{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Faculty Teachers</h4>
+    <p class="text-secondary small mb-0">Select a department to view and manage registered teachers</p>
+  </div>
+</div>
+
+<!-- Department selector -->
+<div class="card bg-white p-3 mb-4">
+  <form method="get" class="row g-2 align-items-center">
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-building"></i></label>
+        <select name="dept" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+          <option value="">— Select a Department —</option>
+          {% for d in departments %}
+          <option value="{{ d.pk }}" {% if selected_dept and selected_dept.pk == d.pk %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% if not selected_dept %}
+<div class="card bg-white text-center p-5">
+  <div class="text-muted mb-2"><i class="bi bi-person-workspace fs-1 opacity-50"></i></div>
+  <h6 class="fw-bold text-dark mb-1">Select a Department</h6>
+  <p class="text-secondary small mb-0">Please choose an academic department above to view its registered faculty roster.</p>
+</div>
+{% else %}
+<div class="card bg-white">
+  <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-people text-primary me-2"></i>Teachers — {{ selected_dept.name }}</h6>
+    <a href="{% url 'teacher_add' %}?dept={{ selected_dept.pk }}" class="btn btn-sm btn-primary"><i class="bi bi-person-plus me-1"></i>Onboard Teacher</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Designation</th>
+          <th>Profile</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in teachers %}
+        <tr>
+          <td>
+            <strong class="text-dark">{{ t.get_full_name|default:"—" }}</strong>
+          </td>
+          <td class="small">{{ t.email|default:"—" }}</td>
+          <td>
+            {% if t.is_hod %}
+              <span class="badge bg-warning-subtle text-warning-emphasis">HOD</span>
+            {% elif t.designation == 'assistant_professor' %}
+              <span class="badge bg-primary-subtle text-primary">Asst. Prof.</span>
+            {% elif t.designation == 'associate_professor' %}
+              <span class="badge bg-success-subtle text-success">Assoc. Prof.</span>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'teacher_detail' t.pk %}" class="btn btn-sm btn-light border text-dark px-3 py-1" style="font-size: 11.5px;">
+              <i class="bi bi-eye me-1"></i>View
+            </a>
+          </td>
+          <td>
+            <div class="d-inline-flex gap-1">
+              <a href="{% url 'teacher_edit' t.pk %}" class="btn btn-sm btn-light border text-dark px-2.5 py-1" style="font-size: 11.5px;">Edit</a>
+              <button type="button" class="btn btn-sm btn-light border text-warning-emphasis px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#resetPasswordModal" data-name="{{ t.get_full_name|default:t.username }}" data-url="{% url 'teacher_reset_password' t.pk %}">Reset</button>
+              <button type="button" class="btn btn-sm btn-light border text-danger px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#deleteModal" data-name="{{ t.get_full_name|default:t.username }}" data-url="{% url 'teacher_delete' t.pk %}">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4 small">No teachers registered in this department. <a href="{% url 'teacher_add' %}?dept={{ selected_dept.pk }}">Onboard one now →</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-warning bg-opacity-10 text-warning mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-key-fill fs-3"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Reset Password?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Reset password for <strong id="resetUserName"></strong>? A new temporary password will be generated.
+        </p>
+
+        <form method="post" id="resetPasswordForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 py-2 fw-semibold">Yes, Reset Password</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Delete "<span id="deleteObjectName"></span>"?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Are you sure you want to permanently delete this item? This action cannot be undone and all associated records will be removed.
+        </p>
+
+        <form method="post" id="deleteForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-danger btn-pill px-4 py-2 fw-semibold">Yes, Delete</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const resetModal = document.getElementById('resetPasswordModal');
+    if (resetModal) {
+      resetModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        document.getElementById('resetUserName').textContent = button.getAttribute('data-name');
+        document.getElementById('resetPasswordForm').action = button.getAttribute('data-url');
+      });
+    }
+
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+      deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        document.getElementById('deleteObjectName').textContent = button.getAttribute('data-name');
+        document.getElementById('deleteForm').action = button.getAttribute('data-url');
+      });
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}
+

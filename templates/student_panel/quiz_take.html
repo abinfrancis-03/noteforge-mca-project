@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% block title %}Taking Quiz: {{ quiz.title }} — Noteforge{% endblock %}
+{% block topbar_title %}Quiz Engine{% endblock %}
+
+{% block content %}
+<!-- Sticky Timer Header -->
+<div class="card bg-white p-3.5 mb-4 shadow-sm border-0 position-sticky top-0 z-3" style="border: 1px solid #e2e8f0 !important; border-radius: 12px;">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div>
+      <h5 class="fw-bold text-dark mb-1">{{ quiz.title }}</h5>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold">
+          {{ quiz.subject.subject_code }} — {{ quiz.subject.name }}
+        </span>
+        <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1">
+          Attempt #{{ attempt_number }}
+        </span>
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div class="text-end">
+        <div class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Time Remaining</div>
+        <div id="timerDisplay" class="font-monospace fw-bold fs-4 text-dark">00:00</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form id="quizForm" method="post" action="{% url 'student_quiz_submit' quiz.pk %}">
+  {% csrf_token %}
+  <input type="hidden" name="time_taken_seconds" id="timeTakenSecs" value="0">
+
+  {% for q in questions %}
+  <div class="card bg-white shadow-sm border-0 mb-4 overflow-hidden" style="border: 1px solid #eef2f6 !important; border-left: 4px solid var(--nf-indigo) !important; border-radius: 12px;">
+    <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="fw-bold text-dark mb-0" style="font-size: 14.5px;">
+        Question {{ forloop.counter }} of {{ questions|length }}
+      </h6>
+      <span class="badge bg-light text-secondary border rounded-pill">1 Mark</span>
+    </div>
+    <div class="card-body p-4">
+      <p class="fw-medium text-dark mb-4 fs-6" style="line-height: 1.6;">
+        {{ q.text }}
+      </p>
+
+      <div class="d-flex flex-column gap-2.5">
+        <label class="option-label">
+          <input type="radio" name="q_{{ q.pk }}" value="A" class="option-radio">
+          <div class="option-card">
+            <span class="option-badge">A</span>
+            <span class="option-text">{{ q.option_a }}</span>
+          </div>
+        </label>
+
+        <label class="option-label">
+          <input type="radio" name="q_{{ q.pk }}" value="B" class="option-radio">
+          <div class="option-card">
+            <span class="option-badge">B</span>
+            <span class="option-text">{{ q.option_b }}</span>
+          </div>
+        </label>
+
+        {% if q.option_c %}
+        <label class="option-label">
+          <input type="radio" name="q_{{ q.pk }}" value="C" class="option-radio">
+          <div class="option-card">
+            <span class="option-badge">C</span>
+            <span class="option-text">{{ q.option_c }}</span>
+          </div>
+        </label>
+        {% endif %}
+
+        {% if q.option_d %}
+        <label class="option-label">
+          <input type="radio" name="q_{{ q.pk }}" value="D" class="option-radio">
+          <div class="option-card">
+            <span class="option-badge">D</span>
+            <span class="option-text">{{ q.option_d }}</span>
+          </div>
+        </label>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="d-flex align-items-center justify-content-end gap-3 mt-4 mb-5">
+    <a href="{% url 'student_quiz_list' %}" class="btn btn-light border rounded-pill px-4" onclick="return confirm('Are you sure you want to cancel this quiz? Your answers will not be saved.')">
+      Cancel Quiz
+    </a>
+    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="return confirm('Submit your answers now?')">
+      Submit Quiz Answers <i class="bi bi-check-lg ms-1"></i>
+    </button>
+  </div>
+</form>
+
+<style>
+  .option-label {
+    display: block;
+    cursor: pointer;
+    margin: 0;
+  }
+  .option-radio {
+    display: none;
+  }
+  .option-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    transition: all 0.15s ease;
+  }
+  .option-label:hover .option-card {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+  }
+  .option-radio:checked + .option-card {
+    border-color: #4f46e5;
+    background: #eef2ff;
+    box-shadow: 0 0 0 1px #4f46e5;
+  }
+  .option-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+  .option-radio:checked + .option-card .option-badge {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+  }
+  .option-text {
+    font-size: 14px;
+    color: #1e293b;
+    line-height: 1.5;
+  }
+</style>
+
+<script>
+  let totalSecs = {{ time_limit_secs }};
+  let timeTaken = 0;
+  const timerDisplay = document.getElementById('timerDisplay');
+  const timeTakenInput = document.getElementById('timeTakenSecs');
+  const quizForm = document.getElementById('quizForm');
+
+  function updateTimer() {
+    if (totalSecs <= 0) {
+      timerDisplay.innerText = "00:00";
+      timerDisplay.style.color = "#dc2626";
+      alert("⏱️ Time is up! Submitting your quiz automatically.");
+      timeTakenInput.value = timeTaken;
+      quizForm.submit();
+      return;
+    }
+
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+    if (totalSecs <= 120) {
+      timerDisplay.style.color = "#dc2626";
+    }
+
+    totalSecs--;
+    timeTaken++;
+    timeTakenInput.value = timeTaken;
+  }
+
+  setInterval(updateTimer, 1000);
+  updateTimer();
+</script>
+{% endblock %}

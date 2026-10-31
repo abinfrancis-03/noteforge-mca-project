@@ -1,0 +1,565 @@
+{% extends 'base.html' %}
+{% block title %}Students & Batches — Noteforge{% endblock %}
+{% block topbar_title %}Students & Batches{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Students &amp; Batches</h4>
+    <p class="text-secondary small mb-0">Select a department to view student batches and semesters</p>
+  </div>
+  {% if selected_dept and selected_batch and selected_sem %}
+  <div class="d-flex align-items-center gap-2">
+    {% if next_sem and students %}
+    <button type="button" class="btn btn-subtle-primary" data-bs-toggle="modal" data-bs-target="#promoteModal">
+      <i class="bi bi-arrow-up-circle-fill"></i>
+      <span>Promote to Semester {{ next_sem.number }}</span>
+    </button>
+    {% elif not next_sem and students %}
+    <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill d-inline-flex align-items-center gap-1.5" style="font-size: 13px; font-weight: 600;" title="{% if selected_batch.is_ongoing %}Highest semester in this department{% else %}Batch duration has completed{% endif %}">
+      <i class="bi bi-check-circle-fill {% if selected_batch.is_ongoing %}text-success{% else %}text-secondary{% endif %}"></i>
+      <span>{% if selected_batch.is_ongoing %}Final Semester{% else %}Semester Finished{% endif %}</span>
+    </span>
+    {% endif %}
+    <a href="{% url 'student_add' %}?dept={{ selected_dept.pk }}&batch={{ selected_batch.pk }}&sem={{ selected_sem.pk }}&next={{ request.get_full_path|urlencode }}" class="btn btn-primary d-inline-flex align-items-center gap-1.5">
+      <i class="bi bi-person-plus"></i>
+      <span>Add Student</span>
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Department selector -->
+<div class="card bg-white p-3 mb-4">
+  <form method="get" class="d-flex align-items-center mb-0" style="min-width: 260px; max-width: 420px;">
+    <div class="input-group input-group-sm w-100">
+      <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-building"></i></label>
+      <select name="dept" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+        <option value="">— Select a Department —</option>
+        {% for d in departments %}
+        <option value="{{ d.pk }}" {% if selected_dept and selected_dept.pk == d.pk %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+</div>
+
+<!-- Breadcrumb -->
+{% if selected_dept %}
+<div class="bg-white rounded-3 border shadow-sm mb-4 px-3 py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb small mb-0 align-items-center bg-transparent p-0">
+      <li class="breadcrumb-item"><a href="{% url 'student_list' %}" class="text-decoration-none fw-semibold">Departments</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'student_list' %}?dept={{ selected_dept.pk }}" class="text-decoration-none fw-semibold">{{ selected_dept.name }}</a></li>
+      {% if selected_batch %}
+      <li class="breadcrumb-item"><a href="{% url 'student_list' %}?dept={{ selected_dept.pk }}&batch={{ selected_batch.pk }}" class="text-decoration-none fw-semibold">{{ selected_batch }}</a></li>
+      {% endif %}
+      {% if selected_sem %}
+      <li class="breadcrumb-item active text-dark fw-bold" aria-current="page">Semester {{ selected_sem.number }}</li>
+      {% endif %}
+    </ol>
+  </nav>
+  {% if not selected_batch %}
+  <div>
+    <button type="button" class="btn btn-primary btn-sm btn-pill py-1 px-2.5" style="font-size: 0.78rem; font-weight: 500;" data-bs-toggle="modal" data-bs-target="#addBatchModal">
+      <i class="bi bi-plus-lg me-1" style="font-size: 0.75rem;"></i>Add Batch
+    </button>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Level 1: Empty state when no department is selected -->
+{% if not selected_dept %}
+<div class="card bg-white text-center p-5">
+  <div class="text-muted mb-2"><i class="bi bi-building fs-1 opacity-50"></i></div>
+  <h6 class="fw-bold text-dark mb-1">Select a Department</h6>
+  <p class="text-secondary small mb-0">Please select an academic department above to view its student batches and semesters.</p>
+</div>
+
+<!-- Level 2: Select Batch -->
+{% elif not selected_batch %}
+<div class="row g-3">
+  {% for b in batches %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card card-hover bg-white h-100 p-4 shadow-sm position-relative d-flex flex-column justify-content-between">
+      <a href="{% url 'student_list' %}?dept={{ selected_dept.pk }}&batch={{ b.pk }}" class="stretched-link text-decoration-none"></a>
+      <div>
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h6 class="fw-bold text-dark mb-0">{{ b }}</h6>
+          {% if b.is_ongoing %}
+            <span class="badge bg-success-subtle text-success">Ongoing</span>
+          {% else %}
+            <span class="badge bg-secondary-subtle text-secondary">Finished</span>
+          {% endif %}
+        </div>
+        <div class="small text-muted mb-2">
+          <i class="bi bi-calendar-range me-1"></i>{{ b.start_month|stringformat:"02d" }}/{{ b.start_year }} → {{ b.end_month|stringformat:"02d" }}/{{ b.end_year }}
+        </div>
+      </div>
+      <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top border-light-subtle">
+        <div class="small text-primary font-semibold">
+          <i class="bi bi-people me-1"></i>{{ b.student_count }} student{{ b.student_count|pluralize }} in {{ selected_dept.code }}
+        </div>
+        <!-- Action Buttons (Update & Delete) -->
+        <div class="d-inline-flex align-items-center gap-1 position-relative" style="z-index: 5;">
+          <button type="button" class="btn btn-sm btn-light border text-primary p-0 rounded-circle"
+            data-bs-toggle="modal"
+            data-bs-target="#editBatchModal"
+            data-id="{{ b.pk }}"
+            data-name="{{ b.name|default:b }}"
+            data-start-month="{{ b.start_month }}"
+            data-start-year="{{ b.start_year }}"
+            data-end-month="{{ b.end_month }}"
+            data-end-year="{{ b.end_year }}"
+            data-url="{% url 'batch_edit' b.pk %}"
+            title="Update Batch"
+            style="width: 29px; height: 29px; display: inline-flex; align-items: center; justify-content: center;"
+            onclick="event.stopPropagation(); openEditBatch(this);">
+            <i class="bi bi-pencil" style="font-size: 12px;"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-light border text-danger p-0 rounded-circle"
+            data-bs-toggle="modal"
+            data-bs-target="#deleteBatchModal"
+            data-name="{{ b }}"
+            data-url="{% url 'batch_delete' b.pk %}"
+            title="Delete Batch"
+            style="width: 29px; height: 29px; display: inline-flex; align-items: center; justify-content: center;"
+            onclick="event.stopPropagation(); openDeleteBatch(this);">
+            <i class="bi bi-trash" style="font-size: 12px;"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card bg-white text-center p-5">
+      <div class="text-muted mb-2"><i class="bi bi-mortarboard fs-1 opacity-50"></i></div>
+      <h6 class="fw-bold text-dark mb-1">No Batches in {{ selected_dept.name }}</h6>
+      <p class="text-secondary small mb-3">No academic batches have been created for this department yet.</p>
+      <div>
+        <button type="button" class="btn btn-primary btn-sm btn-pill px-3" data-bs-toggle="modal" data-bs-target="#addBatchModal">
+          <i class="bi bi-plus-lg me-1"></i>Add First Batch
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Level 3: Select Semester -->
+{% elif not selected_sem %}
+<div class="row g-3">
+  {% for s in semesters %}
+  <div class="col-md-6 col-lg-5 col-xl-4">
+    <a href="{% url 'student_list' %}?dept={{ selected_dept.pk }}&batch={{ selected_batch.pk }}&sem={{ s.pk }}" class="card card-hover bg-white text-decoration-none h-100 p-4 shadow-sm border-0" style="border-radius: 12px; border: 1px solid #eef2f6 !important;">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <div class="btn-circle {% if selected_batch.is_ongoing %}bg-primary bg-opacity-10 text-primary{% else %}bg-secondary bg-opacity-10 text-secondary{% endif %}" style="width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+            <i class="bi bi-book fs-6" {% if selected_batch.is_ongoing %}style="color: var(--nf-indigo) !important;"{% endif %}></i>
+          </div>
+          <div>
+            <strong class="text-dark fs-6 d-block">Semester {{ s.number }}</strong>
+            {% if selected_batch.is_ongoing %}
+            <span class="badge bg-success-subtle text-success py-0.5 px-2" style="font-size: 11px; font-weight: 600;">Active Semester</span>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-secondary py-0.5 px-2" style="font-size: 11px; font-weight: 600;">Semester Finished</span>
+            {% endif %}
+          </div>
+        </div>
+        <span class="badge bg-primary-subtle text-primary py-1 px-2.5 rounded-pill" style="font-size: 12px; font-weight: 600;">
+          {{ s.student_count }} student{{ s.student_count|pluralize }}
+        </span>
+      </div>
+      <div class="d-flex align-items-center justify-content-between text-muted small pt-2 border-top border-light-subtle">
+        <span class="text-secondary" style="font-size: 12px;">Open Roster &amp; Manage</span>
+        <i class="bi bi-arrow-right text-primary"></i>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="card bg-white text-center p-5 text-muted small">No active semester configured for {{ selected_dept.name }}. <a href="{% url 'semester_list' %}?dept={{ selected_dept.pk }}">Configure Semesters →</a></div></div>
+  {% endfor %}
+</div>
+
+<!-- Level 4: Student Table -->
+{% else %}
+<div class="card bg-white">
+  <div class="card-header bg-white py-3">
+    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-person-lines-fill text-primary me-2"></i>{{ selected_dept.code }} — Semester {{ selected_sem.number }} — {{ selected_batch }}</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Student Name</th>
+          <th>Register No</th>
+          <th>Email</th>
+          <th>DOB</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td><strong class="text-dark">{{ s.get_full_name|default:"—" }}</strong></td>
+          <td><code class="text-muted">{{ s.username }}</code></td>
+          <td class="small">{{ s.email|default:"—" }}</td>
+          <td class="small text-muted">{{ s.date_of_birth|date:"d M Y"|default:"—" }}</td>
+          <td>
+            {% if s.is_first_login %}
+            <span class="badge bg-danger-subtle text-danger">Pending Login</span>
+            {% else %}
+            <span class="badge bg-success-subtle text-success">Active</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-1">
+              <a href="{% url 'student_edit' s.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-light border text-dark px-2.5 py-1" style="font-size: 11.5px;">Edit</a>
+              <button type="button" class="btn btn-sm btn-light border text-warning-emphasis px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#resetPasswordModal" data-name="{{ s.get_full_name|default:s.username }}" data-url="{% url 'student_reset_password' s.pk %}">Reset</button>
+              <button type="button" class="btn btn-sm btn-light border text-danger px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#deleteModal" data-name="{{ s.get_full_name|default:s.username }}" data-url="{% url 'student_delete' s.pk %}">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4 small">
+            No students registered in {{ selected_dept.code }} Semester {{ selected_sem.number }} (Batch {{ selected_batch }}).
+            <a href="{% url 'student_add' %}?dept={{ selected_dept.pk }}&batch={{ selected_batch.pk }}&sem={{ selected_sem.pk }}&next={{ request.get_full_path|urlencode }}">Add Student →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-warning bg-opacity-10 text-warning mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-key-fill fs-3"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Reset Password?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Reset password for <strong id="resetUserName"></strong>? A new temporary password will be generated.
+        </p>
+
+        <form method="post" id="resetPasswordForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 py-2 fw-semibold">Yes, Reset Password</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Delete "<span id="deleteObjectName"></span>"?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Are you sure you want to permanently delete this item? This action cannot be undone and all associated records will be removed.
+        </p>
+
+        <form method="post" id="deleteForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-danger btn-pill px-4 py-2 fw-semibold">Yes, Delete</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Promote Modal -->
+{% if selected_batch and selected_dept and selected_sem and next_sem %}
+<div class="modal fade" id="promoteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-primary bg-opacity-10 text-primary mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-arrow-up-circle fs-3" style="color: var(--nf-indigo) !important;"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Promote to Semester {{ next_sem.number }}?</h4>
+        <p class="text-secondary small mb-3 px-md-2">
+          Advance <strong>{{ students.count }}</strong> student{{ students.count|pluralize }} in <strong>{{ selected_dept.name }}</strong> (Batch: <strong>{{ selected_batch }}</strong>) from <strong>Semester {{ selected_sem.number }}</strong> to <strong>Semester {{ next_sem.number }}</strong>.
+        </p>
+
+        <div class="alert alert-light border small text-start mb-4 py-2 px-3">
+          <i class="bi bi-info-circle text-primary me-1"></i>
+          Students will immediately be moved to Semester {{ next_sem.number }}. Their Semester {{ selected_sem.number }} materials and course notes will remain accessible in their archive for reference.
+        </div>
+
+        <form method="post" action="{% url 'student_promote' %}">
+          {% csrf_token %}
+          <input type="hidden" name="batch" value="{{ selected_batch.pk }}">
+          <input type="hidden" name="department" value="{{ selected_dept.pk }}">
+          <input type="hidden" name="semester" value="{{ selected_sem.pk }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 py-2 fw-semibold">
+              <i class="bi bi-check2-circle me-1"></i>Yes, Promote Students
+            </button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if selected_dept %}
+<!-- Add Batch Modal -->
+<div class="modal fade" id="addBatchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+          <div>
+            <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+              <i class="bi bi-mortarboard fs-5" style="color: var(--nf-indigo) !important;"></i> Add Student Batch
+            </h5>
+            <span class="badge bg-primary-subtle text-primary">{{ selected_dept.name }} ({{ selected_dept.code }})</span>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <p class="text-secondary small mb-4">
+          Create a new academic batch for <strong>{{ selected_dept.name }}</strong>. This batch will only belong to {{ selected_dept.code }} and will not affect other departments.
+        </p>
+
+        <form method="post" action="{% url 'batch_add' %}">
+          {% csrf_token %}
+          <input type="hidden" name="department" value="{{ selected_dept.pk }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+          <div class="mb-3 text-start">
+            <label class="form-label fw-semibold text-dark small">Batch Name <span class="text-muted fw-normal">(Optional)</span></label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. {{ selected_dept.code }} 2026–2028 (Leave blank for auto)">
+          </div>
+
+          <div class="row g-3 mb-3 text-start">
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">Start Month</label>
+              <select name="start_month" class="form-select" required>
+                <option value="">Month</option>
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                <option value="7">July</option><option value="8" selected>August</option><option value="9">September</option>
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">Start Year</label>
+              <input type="number" name="start_year" class="form-control" min="2000" max="2099" placeholder="e.g. 2026" required>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4 text-start">
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">End Month</label>
+              <select name="end_month" class="form-select" required>
+                <option value="">Month</option>
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                <option value="4">April</option><option value="5" selected>May</option><option value="6">June</option>
+                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">End Year</label>
+              <input type="number" name="end_year" class="form-control" min="2000" max="2099" placeholder="e.g. 2028" required>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">Create Batch</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Batch Modal -->
+<div class="modal fade" id="editBatchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+          <div>
+            <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+              <i class="bi bi-pencil-square fs-5" style="color: var(--nf-indigo) !important;"></i> Update Batch
+            </h5>
+            <span class="badge bg-primary-subtle text-primary">{{ selected_dept.name }} ({{ selected_dept.code }})</span>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <form method="post" id="editBatchForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="department" value="{{ selected_dept.pk }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+          <div class="mb-3 text-start">
+            <label class="form-label fw-semibold text-dark small">Batch Name <span class="text-muted fw-normal">(Optional)</span></label>
+            <input type="text" name="name" id="editBatchName" class="form-control" placeholder="Leave blank to auto-generate from years">
+          </div>
+
+          <div class="row g-3 mb-3 text-start">
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">Start Month</label>
+              <select name="start_month" id="editStartMonth" class="form-select" required>
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">Start Year</label>
+              <input type="number" name="start_year" id="editStartYear" class="form-control" min="2000" max="2099" required>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4 text-start">
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">End Month</label>
+              <select name="end_month" id="editEndMonth" class="form-select" required>
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">End Year</label>
+              <input type="number" name="end_year" id="editEndYear" class="form-control" min="2000" max="2099" required>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">Save Changes</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Batch Modal -->
+<div class="modal fade" id="deleteBatchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Delete Batch "<span id="deleteBatchName"></span>"?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Are you sure you want to delete this batch? All associated student records and assignments in this batch will be affected.
+        </p>
+
+        <form method="post" id="deleteBatchForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-danger btn-pill px-4 py-2 fw-semibold">Yes, Delete Batch</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  function openEditBatch(btn) {
+    const form = document.getElementById('editBatchForm');
+    if (form) form.action = btn.getAttribute('data-url');
+    const nameInput = document.getElementById('editBatchName');
+    if (nameInput) nameInput.value = btn.getAttribute('data-name') || '';
+    const smSelect = document.getElementById('editStartMonth');
+    if (smSelect) smSelect.value = String(btn.getAttribute('data-start-month') || '8');
+    const syInput = document.getElementById('editStartYear');
+    if (syInput) syInput.value = btn.getAttribute('data-start-year') || '';
+    const emSelect = document.getElementById('editEndMonth');
+    if (emSelect) emSelect.value = String(btn.getAttribute('data-end-month') || '5');
+    const eyInput = document.getElementById('editEndYear');
+    if (eyInput) eyInput.value = btn.getAttribute('data-end-year') || '';
+  }
+
+  function openDeleteBatch(btn) {
+    const form = document.getElementById('deleteBatchForm');
+    if (form) form.action = btn.getAttribute('data-url');
+    const nameSpan = document.getElementById('deleteBatchName');
+    if (nameSpan) nameSpan.textContent = btn.getAttribute('data-name') || '';
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const resetModal = document.getElementById('resetPasswordModal');
+    if (resetModal) {
+      resetModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        if (!button) return;
+        document.getElementById('resetUserName').textContent = button.getAttribute('data-name');
+        document.getElementById('resetPasswordForm').action = button.getAttribute('data-url');
+      });
+    }
+
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+      deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        if (!button) return;
+        document.getElementById('deleteObjectName').textContent = button.getAttribute('data-name');
+        document.getElementById('deleteForm').action = button.getAttribute('data-url');
+      });
+    }
+
+    const editBatchModal = document.getElementById('editBatchModal');
+    if (editBatchModal) {
+      editBatchModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        if (!button) return;
+        openEditBatch(button);
+      });
+    }
+
+    const deleteBatchModal = document.getElementById('deleteBatchModal');
+    if (deleteBatchModal) {
+      deleteBatchModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        if (!button) return;
+        openDeleteBatch(button);
+      });
+    }
+  });
+</script>
+{% endblock %}
+

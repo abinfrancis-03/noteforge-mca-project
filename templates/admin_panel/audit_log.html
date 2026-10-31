@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Audit Log — Noteforge{% endblock %}
+{% block topbar_title %}System Security Audit Log{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">System Audit Log</h4>
+    <p class="text-secondary small mb-0">System security audit history (showing latest 200 activity logs)</p>
+  </div>
+</div>
+
+<!-- Action Filter Bar -->
+<div class="card bg-white p-3 mb-4">
+  <form method="get" class="row g-2 align-items-center">
+    <div class="col-md-4 col-lg-3">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-funnel"></i></label>
+        <select name="action" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+          <option value="">All Actions</option>
+          <option value="create" {% if action_filter == 'create' %}selected{% endif %}>Created</option>
+          <option value="update" {% if action_filter == 'update' %}selected{% endif %}>Updated</option>
+          <option value="delete" {% if action_filter == 'delete' %}selected{% endif %}>Deleted</option>
+          <option value="login"  {% if action_filter == 'login'  %}selected{% endif %}>Login</option>
+          <option value="reset"  {% if action_filter == 'reset'  %}selected{% endif %}>Password Reset</option>
+        </select>
+      </div>
+    </div>
+    {% if action_filter %}
+    <div class="col-auto">
+      <a href="{% url 'audit_log' %}" class="btn btn-sm btn-light border">Clear Filter</a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card bg-white">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Action</th>
+          <th>Target</th>
+          <th>Activity Description</th>
+          <th>Actor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td class="small text-muted text-nowrap">{{ log.timestamp|date:"d M Y, H:i" }}</td>
+          <td>
+            {% if log.action == 'create' %}
+              <span class="badge bg-success-subtle text-success">Created</span>
+            {% elif log.action == 'update' %}
+              <span class="badge bg-primary-subtle text-primary">Updated</span>
+            {% elif log.action == 'delete' %}
+              <span class="badge bg-danger-subtle text-danger">Deleted</span>
+            {% elif log.action == 'reset' %}
+              <span class="badge bg-warning-subtle text-warning-emphasis">Reset</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary">Login</span>
+            {% endif %}
+          </td>
+          <td><span class="badge bg-light text-dark border">{{ log.target_model }}</span></td>
+          <td class="small text-secondary">{{ log.description }}</td>
+          <td class="small fw-semibold">{{ log.actor.username|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4 small">No activity recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

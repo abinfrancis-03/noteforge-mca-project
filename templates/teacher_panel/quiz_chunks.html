@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% block title %}Semantic Chunks (Phase 3) — Noteforge{% endblock %}
+{% block topbar_title %}AI Assessment Engine &bull; Semantic Chunking{% endblock %}
+
+{% block content %}
+<style>
+  .phase-badge {
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    border: 1px solid #c7d2fe;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .step-pill.completed {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+  }
+  .step-pill.active {
+    background-color: var(--nf-indigo);
+    color: #ffffff;
+  }
+  .step-pill.upcoming {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border: 1px dashed #cbd5e1;
+  }
+  .chunk-card {
+    border: 1px solid #eef2f6;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+  }
+  .chunk-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  }
+  .chunk-content-box {
+    font-family: 'JetBrains Mono', 'Plus Jakarta Sans', monospace, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #1e293b;
+    white-space: pre-wrap;
+    background-color: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+    padding: 1.1rem 1.25rem;
+    max-height: 480px;
+    overflow-y: auto;
+  }
+  .token-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 50px;
+  }
+</style>
+
+<!-- Phase Stepper Indicator -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <span class="phase-badge"><i class="bi bi-diagram-3-fill me-1"></i>Phase 3 of 5</span>
+    <span class="text-secondary small fw-medium">Structure-Aware Semantic Chunking</span>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <span class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 1. Configuration
+    </span>
+    <i class="bi bi-chevron-right text-muted small"></i>
+    <span class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 2. PDF Processing
+    </span>
+    <i class="bi bi-chevron-right text-muted small"></i>
+    <span class="step-pill active shadow-xs">
+      <i class="bi bi-diagram-3-fill"></i> 3. Semantic Chunks
+    </span>
+    <i class="bi bi-chevron-right text-muted small"></i>
+    <a href="{% url 'teacher_quiz_analysis' quiz.pk %}" class="step-pill completed text-decoration-none">
+      <i class="bi bi-cpu"></i> 4. AI Analysis
+    </a>
+    <i class="bi bi-chevron-right text-muted small"></i>
+    <span class="step-pill upcoming">
+      5. Question Synthesis
+    </span>
+  </div>
+</div>
+
+<!-- Header Card -->
+<div class="card bg-white p-4 shadow-sm border-0 rounded-3 mb-4" style="border: 1px solid #eef2f6 !important;">
+  <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h5 class="fw-bold text-dark mb-0">{{ quiz.title }}</h5>
+        <span class="badge bg-primary-subtle text-primary">{{ quiz.subject.subject_code }}</span>
+      </div>
+      <p class="text-secondary small mb-0">
+        {{ quiz.subject.name }} &bull; Sem {{ quiz.subject.semester.number }} &bull; 
+        Target: {{ quiz.num_questions }} MCQs &bull; {{ quiz.get_difficulty_display }}
+      </p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="{% url 'teacher_quiz_extracted_text' quiz.pk %}" class="btn btn-sm btn-light border rounded-pill px-3 py-1.5 fw-semibold text-secondary d-inline-flex align-items-center gap-1.5" style="font-size: 12.5px;">
+        <i class="bi bi-file-earmark-text"></i>
+        <span>Extracted Pages</span>
+      </a>
+      <a href="{% url 'teacher_quiz_chunks' quiz.pk %}?rechunk=1" class="btn btn-sm btn-light border rounded-pill px-3 py-1.5 fw-semibold text-secondary d-inline-flex align-items-center gap-1.5" style="font-size: 12.5px;">
+        <i class="bi bi-arrow-clockwise"></i>
+        <span>Re-chunk PDF</span>
+      </a>
+      <a href="{% url 'teacher_quiz_list' %}" class="btn btn-sm btn-light border rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 12.5px;">
+        ← All Quizzes
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Chunking Metrics Grid -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card bg-white p-3 border-0 shadow-sm rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="text-muted small fw-semibold text-uppercase" style="font-size: 11px;">Total Chunks</div>
+      <h3 class="fw-bold text-dark my-1">{{ total_chunks }}</h3>
+      <span class="text-secondary small" style="font-size: 11.5px;">Semantic units</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-white p-3 border-0 shadow-sm rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="text-muted small fw-semibold text-uppercase" style="font-size: 11px;">Average Token Size</div>
+      <h3 class="fw-bold my-1" style="color: var(--nf-indigo);">{{ avg_tokens }}</h3>
+      <span class="text-secondary small" style="font-size: 11.5px;">Target: 800–1200 tokens</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-white p-3 border-0 shadow-sm rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="text-muted small fw-semibold text-uppercase" style="font-size: 11px;">Total Tokens</div>
+      <h3 class="fw-bold text-success my-1">{{ total_tokens }}</h3>
+      <span class="text-secondary small" style="font-size: 11.5px;">Across entire curriculum</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card bg-white p-3 border-0 shadow-sm rounded-3 text-center" style="border: 1px solid #eef2f6 !important;">
+      <div class="text-muted small fw-semibold text-uppercase" style="font-size: 11px;">Topics Identified</div>
+      <h3 class="fw-bold text-dark my-1">{{ topics_count }}</h3>
+      <span class="text-secondary small" style="font-size: 11.5px;">Chapter &amp; section headings</span>
+    </div>
+  </div>
+</div>
+
+<!-- Strategy Explainer Banner -->
+<div class="alert alert-light border shadow-sm rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+    <span class="small text-dark">
+      <strong>Structure-Aware Chunking:</strong> Bound to Chapters, Sections, and Topics rather than character splits. Retains full provenance (Chunk ID, Topic, and Start/End Page numbers) to ground generated MCQs.
+    </span>
+  </div>
+  <span class="badge bg-indigo-subtle text-indigo rounded-pill px-2.5 py-1" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; font-size: 11px;">
+    100–200 Token Overlap Active
+  </span>
+</div>
+
+<!-- Chunks List -->
+<div class="d-flex flex-column gap-3 mb-4">
+  {% for c in chunks %}
+  <div class="chunk-card p-3.5 shadow-xs">
+
+    <!-- Chunk Metadata Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2.5 pb-2 border-bottom">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: var(--nf-indigo); color: #ffffff; font-size: 11.5px;">
+          {{ c.chunk_id }}
+        </span>
+        <span class="fw-bold text-dark" style="font-size: 13.5px;">
+          <i class="bi bi-bookmark-fill me-1 text-primary"></i>{{ c.topic }}
+        </span>
+      </div>
+
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <!-- Page Span Badge -->
+        <span class="badge bg-light text-secondary border fw-semibold" style="font-size: 11px;">
+          <i class="bi bi-file-earmark me-1"></i>Pages: {{ c.start_page }}{% if c.start_page != c.end_page %}–{{ c.end_page }}{% endif %}
+        </span>
+
+        <!-- Token Meter Pill -->
+        {% if c.token_count >= 800 and c.token_count <= 1200 %}
+          <span class="token-pill bg-success-subtle text-success border border-success-subtle">
+            <i class="bi bi-check-circle me-1"></i>{{ c.token_count }} tokens (Optimal)
+          </span>
+        {% elif c.token_count > 1200 %}
+          <span class="token-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ c.token_count }} tokens (Dense)
+          </span>
+        {% else %}
+          <span class="token-pill bg-light text-secondary border">
+            {{ c.token_count }} tokens
+          </span>
+        {% endif %}
+
+        {% if c.overlap_token_count > 0 %}
+          <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size: 10.5px;">
+            +{{ c.overlap_token_count }} overlap
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Chunk Content Body -->
+    <div class="chunk-content-box">{{ c.content }}</div>
+
+  </div>
+  {% empty %}
+  <div class="card bg-white p-5 text-center rounded-3 border-0 shadow-sm">
+    <i class="bi bi-diagram-3 fs-1 text-muted opacity-50 mb-2"></i>
+    <h6 class="fw-bold text-dark">No Semantic Chunks Generated Yet</h6>
+    <p class="text-secondary small mb-3">Ensure your PDF has been preprocessed in Phase 2 before chunking.</p>
+    <div>
+      <a href="{% url 'teacher_quiz_chunks' quiz.pk %}?rechunk=1" class="btn btn-primary btn-sm rounded-pill px-3">
+        Generate Semantic Chunks
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Bottom Navigation Bar -->
+<div class="d-flex align-items-center justify-content-between p-3 bg-white border rounded-3 shadow-sm">
+  <a href="{% url 'teacher_quiz_extracted_text' quiz.pk %}" class="btn btn-light border rounded-pill px-4" style="font-size: 13px;">
+    ← Back to Extracted Pages
+  </a>
+
+  <div class="d-flex align-items-center gap-2">
+    <span class="text-muted small me-2">Phase 3 Verified &bull; {{ total_chunks }} Chunks Ready</span>
+    <a href="{% url 'teacher_quiz_analysis' quiz.pk %}" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm d-inline-flex align-items-center gap-1.5" style="font-size: 13px;">
+      <span>Proceed to AI Content Analysis (Phase 4)</span>
+      <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+</div>
+{% endblock %}

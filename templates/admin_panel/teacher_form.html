@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Teacher — Noteforge{% endblock %}
+
+{% block content %}
+<style>
+  .teacher-form-wrap .btn {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .teacher-form-wrap .btn-sm {
+    font-size: 12px;
+  }
+  .teacher-form-wrap .form-control,
+  .teacher-form-wrap .form-select {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    color: #1e293b;
+  }
+  .teacher-form-wrap .form-control::placeholder {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+  .teacher-form-wrap .form-label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12.5px;
+  }
+</style>
+<div class="teacher-form-wrap card bg-white">
+  <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+      <i class="bi bi-person-badge fs-5 text-primary"></i> {{ action }} Faculty Teacher
+    </h5>
+    <a href="{% url 'teacher_list' %}{% if selected_dept %}?dept={{ selected_dept.pk }}{% endif %}" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold">← Back</a>
+  </div>
+  <div class="card-body p-4">
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.GET.next|default:request.META.HTTP_REFERER }}">
+
+      <!-- Row 1: First Name / Last Name / Username / Email -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">First Name <span class="text-danger">*</span></label>
+          <input type="text" name="first_name" class="form-control" value="{{ teacher.first_name|default:'' }}" placeholder="First name" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">Last Name</label>
+          <input type="text" name="last_name" class="form-control" value="{{ teacher.last_name|default:'' }}" placeholder="Last name">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">Username <span class="text-danger">*</span></label>
+          <input type="text" name="username" class="form-control {% if action == 'Edit' %}bg-light{% endif %}"
+            value="{{ teacher.username|default:'' }}" placeholder="e.g. faculty001"
+            {% if action == 'Edit' %}readonly{% endif %} required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ teacher.email|default:'' }}" placeholder="email@college.edu">
+        </div>
+      </div>
+
+      <!-- Row 2: Employee ID / Phone / Department / Designation -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">Employee ID</label>
+          <input type="text" name="employee_id" class="form-control" value="{{ teacher.employee_id|default:'' }}" placeholder="e.g. EMP001">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">Phone Number</label>
+          <input type="tel" name="phone" class="form-control" value="{{ teacher.phone|default:'' }}" placeholder="e.g. 9876543210">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">Department <span class="text-danger">*</span></label>
+          {% if selected_dept %}
+            <select class="form-select bg-light" disabled>
+              <option value="{{ selected_dept.pk }}" selected>{{ selected_dept.name }}</option>
+            </select>
+            <input type="hidden" name="department" id="deptSelectInput" value="{{ selected_dept.pk }}">
+          {% else %}
+            <select name="department" id="deptSelectInput" class="form-select" onchange="loadDepartmentSubjects()" required>
+              <option value="">Select department</option>
+              {% for d in departments %}
+              <option value="{{ d.pk }}">{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">Designation</label>
+          <select name="designation" id="designationSelect" class="form-select">
+            <option value="">— Select Designation —</option>
+            <option value="assistant_professor" {% if teacher.designation == 'assistant_professor' %}selected{% endif %}>Assistant Professor</option>
+            <option value="associate_professor" {% if teacher.designation == 'associate_professor' %}selected{% endif %}>Associate Professor</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 3: Date of Birth / HOD -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold text-dark small">Date of Birth <span class="text-danger">*</span></label>
+          <input type="date" name="date_of_birth" class="form-control" value="{{ teacher.date_of_birth|date:'Y-m-d'|default:'' }}" required>
+          <div class="form-text text-muted small">Default password: DOB (DDMMYYYY)</div>
+        </div>
+        <div class="col-md-4 d-flex align-items-center">
+          <div class="form-check mt-3">
+            <input type="checkbox" name="is_hod" class="form-check-input" id="isHodCheck"
+              {% if teacher.is_hod %}checked{% endif %}
+              {% if selected_dept.hod and selected_dept.hod_id != teacher.pk %}disabled{% endif %}>
+            <label class="form-check-label fw-semibold text-dark small" for="isHodCheck">
+              Assign as Head of Department (HOD)
+            </label>
+            {% if selected_dept.hod and selected_dept.hod_id != teacher.pk %}
+            <div class="form-text text-danger small mt-1" id="hodWarningText">
+              <i class="bi bi-exclamation-triangle me-1"></i>Department already has a HOD: <strong>{{ selected_dept.hod.get_full_name|default:selected_dept.hod.username }}</strong>
+            </div>
+            {% else %}
+            <div class="form-text text-danger small mt-1 d-none" id="hodWarningText"></div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Subject Assignment Grid -->
+      <div class="mb-4">
+        <label class="form-label fw-semibold text-dark small mb-2">Subject Assignments</label>
+        <div id="subjectGridContainer" class="p-3 bg-light rounded-3 border">
+          <p class="text-muted small mb-0">Select a department above to view and assign subjects.</p>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">{{ action }} Teacher</button>
+        <a href="{% url 'teacher_list' %}{% if selected_dept %}?dept={{ selected_dept.pk }}{% endif %}" class="btn btn-light border btn-pill px-4 text-dark fw-semibold">Cancel</a>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+  const assignedSubjectIds = [{% if teacher %}{% for s in teacher.assigned_subjects.all %}{{ s.pk }},{% endfor %}{% endif %}];
+  const currentTeacherPk = {% if teacher %}{{ teacher.pk }}{% else %}null{% endif %};
+
+  function toggleDesignation() {
+    const hodCheck = document.getElementById('isHodCheck');
+    const designationSelect = document.getElementById('designationSelect');
+    if (hodCheck && designationSelect) {
+      if (hodCheck.checked) {
+        designationSelect.disabled = true;
+        designationSelect.value = '';
+      } else {
+        designationSelect.disabled = false;
+      }
+    }
+  }
+
+  function loadDepartmentSubjects() {
+    const deptInput = document.getElementById('deptSelectInput');
+    const deptId = deptInput ? deptInput.value : '';
+    const container = document.getElementById('subjectGridContainer');
+
+    if (!deptId) {
+      container.innerHTML = '<p class="text-muted small mb-0">Select a department above to view and assign subjects.</p>';
+      return;
+    }
+
+    container.innerHTML = '<p class="text-muted small mb-0"><i class="bi bi-arrow-repeat spin me-1"></i>Loading department curriculum subjects...</p>';
+
+    fetch(`/admin-panel/api/department-subjects/?dept=${deptId}`)
+      .then(r => r.json())
+      .then(data => {
+        const hodCheck = document.getElementById('isHodCheck');
+        const hodWarning = document.getElementById('hodWarningText');
+
+        if (data.has_hod && data.hod_id !== currentTeacherPk) {
+          if (hodCheck) {
+            hodCheck.disabled = true;
+            hodCheck.checked = false;
+          }
+          if (hodWarning) {
+            hodWarning.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Department already has a HOD: <strong>${data.hod_name}</strong>`;
+            hodWarning.classList.remove('d-none');
+          }
+        } else if (hodCheck) {
+          hodCheck.disabled = false;
+          if (hodWarning) hodWarning.classList.add('d-none');
+        }
+        toggleDesignation();
+
+        if (!data.semesters || data.semesters.length === 0) {
+          container.innerHTML = '<p class="text-muted small mb-0">No semesters or subjects configured for this department yet.</p>';
+          return;
+        }
+
+        let html = '';
+        data.semesters.forEach(sem => {
+          const semNum = sem.number !== undefined ? sem.number : sem.sem_number;
+          if (sem.subjects.length > 0) {
+            html += `<div class="mb-3">
+              <div class="fw-bold text-dark mb-1" style="font-size:0.8rem;">Semester ${semNum}</div>
+              <div class="row g-2">`;
+            sem.subjects.forEach(sub => {
+              const checked = assignedSubjectIds.includes(sub.id) ? 'checked' : '';
+              html += `<div class="col-md-4">
+                <div class="form-check p-2 bg-white rounded border">
+                  <input type="checkbox" name="subjects" value="${sub.id}" class="form-check-input ms-1" id="sub_${sub.id}" ${checked}>
+                  <label class="form-check-label small ms-2" for="sub_${sub.id}">
+                    <strong class="text-dark">${sub.code}</strong> — ${sub.name}
+                  </label>
+                </div>
+              </div>`;
+            });
+            html += `</div></div>`;
+          }
+        });
+
+        container.innerHTML = html || '<p class="text-muted small mb-0">No subjects configured for this department.</p>';
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    loadDepartmentSubjects();
+    const hodCheck = document.getElementById('isHodCheck');
+    if (hodCheck) {
+      hodCheck.addEventListener('change', toggleDesignation);
+      toggleDesignation();
+    }
+  });
+</script>
+{% endblock %}

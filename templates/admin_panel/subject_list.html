@@ -1,0 +1,339 @@
+{% extends 'base.html' %}
+{% block title %}Subjects — Noteforge{% endblock %}
+{% block topbar_title %}Curriculum Subjects{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Curriculum Subjects</h4>
+    <p class="text-secondary small mb-0">Select department and semester to manage subject courses</p>
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="card bg-white p-3 mb-4">
+  <form method="get" id="filterForm" class="row g-2 align-items-center">
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-building"></i></label>
+        <select name="dept" id="deptSelect" class="form-select form-select-sm border-start-0" onchange="deptChanged()">
+          <option value="">— Select Department —</option>
+          {% for d in departments %}
+          <option value="{{ d.pk }}" {% if selected_dept and selected_dept.pk == d.pk %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-calendar3"></i></label>
+        <select name="sem" id="semSelect" class="form-select form-select-sm border-start-0" onchange="this.form.submit()" {% if not selected_dept %}disabled{% endif %}>
+          {% if not selected_dept %}
+            <option value="">— Select Department First —</option>
+          {% elif not semesters %}
+            <option value="">— No Semesters Configured —</option>
+          {% else %}
+            <option value="">— Select Semester —</option>
+            {% for s in semesters %}
+            <option value="{{ s.pk }}" {% if selected_sem and selected_sem.pk == s.pk %}selected{% endif %}>Semester {{ s.number }}</option>
+            {% endfor %}
+          {% endif %}
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% if not selected_dept %}
+<div class="card bg-white text-center p-5">
+  <div class="text-muted mb-2"><i class="bi bi-journal-bookmark fs-1 opacity-50"></i></div>
+  <h6 class="fw-bold text-dark mb-1">Select a Department</h6>
+  <p class="text-secondary small mb-0">Select an academic department above to browse subjects.</p>
+</div>
+{% elif not selected_sem %}
+<div class="card bg-white p-4">
+  <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-calendar-event text-primary me-2"></i>Semesters in {{ selected_dept.name }}</h6>
+    {% if not semesters %}
+    <a href="{% url 'semester_list' %}?dept={{ selected_dept.pk }}" class="btn btn-sm btn-primary">
+      <i class="bi bi-plus-lg me-1"></i>Provision Semesters for {{ selected_dept.code }}
+    </a>
+    {% endif %}
+  </div>
+
+  {% if semesters %}
+  <div class="row g-3">
+    {% for s in semesters %}
+    <div class="col-md-6 col-lg-4">
+      <a href="?dept={{ selected_dept.pk }}&sem={{ s.pk }}" class="card bg-white border text-decoration-none p-3 shadow-sm hover-shadow transition">
+        <div>
+          <strong class="text-dark d-block mb-1">Semester {{ s.number }}</strong>
+          <span class="text-muted small">View & Manage Subjects</span>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="text-center py-4">
+    <div class="text-muted mb-2"><i class="bi bi-calendar-x fs-1 opacity-50"></i></div>
+    <h6 class="fw-bold text-dark mb-1">No Semesters Configured Yet</h6>
+    <p class="text-secondary small mb-3">Department "{{ selected_dept.name }}" does not have any semesters set up yet.</p>
+    <a href="{% url 'semester_list' %}?dept={{ selected_dept.pk }}" class="btn btn-primary btn-sm px-4">
+      <i class="bi bi-plus-lg me-1"></i>Configure Semesters Now →
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+
+<div class="card bg-white">
+  <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+    <h6 class="fw-bold text-dark mb-0">
+      <i class="bi bi-book text-primary me-2"></i>{{ selected_dept.name }} — Semester {{ selected_sem.number }} (Subjects)
+    </h6>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
+      <i class="bi bi-plus-lg me-1"></i>Add Subject
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Subject Code</th>
+          <th>Subject Name</th>
+          <th>Credits</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in subjects %}
+        <tr>
+          <td><span class="badge bg-primary-subtle text-primary">{{ sub.subject_code }}</span></td>
+          <td><strong class="text-dark">{{ sub.name }}</strong></td>
+          <td><span class="badge bg-light text-dark border">{{ sub.credits }} Credits</span></td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-1">
+              <button type="button" class="btn btn-sm btn-light border text-dark px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#editSubjectModal" data-name="{{ sub.name }}" data-code="{{ sub.subject_code }}" data-credits="{{ sub.credits }}" data-sem="{{ sub.semester.pk }}" data-url="{% url 'subject_edit' sub.pk %}">Edit</button>
+              <button type="button" class="btn btn-sm btn-light border text-danger px-2.5 py-1" style="font-size: 11.5px;" data-bs-toggle="modal" data-bs-target="#deleteModal" data-name="{{ sub.name }}" data-url="{% url 'subject_delete' sub.pk %}">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4 small">No subjects configured in this semester. <button type="button" class="btn btn-link p-0 text-decoration-none small" data-bs-toggle="modal" data-bs-target="#addSubjectModal">Add Subject →</button></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Subject Modal -->
+<div class="modal fade" id="addSubjectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+          <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-book fs-5" style="color: var(--nf-indigo) !important;"></i> Add Subject
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{% url 'subject_add' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="dept_id" value="{{ selected_dept.pk }}">
+          <input type="hidden" name="semester" value="{{ selected_sem.pk }}">
+          <div class="mb-3 text-start">
+            <label class="form-label fw-semibold text-dark small">Department & Semester</label>
+            <input type="text" class="form-control" value="{{ selected_dept.name }} — Semester {{ selected_sem.number }}" disabled>
+          </div>
+          <div class="mb-3 text-start">
+            <label class="form-label fw-semibold text-dark small">Subject Name</label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. Advanced Database Systems" required>
+          </div>
+          <div class="row g-2 mb-4 text-start">
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">Subject Code</label>
+              <input type="text" name="subject_code" class="form-control" placeholder="e.g. MCA301" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">Credits</label>
+              <input type="number" name="credits" class="form-control" value="4" min="1" max="10" required>
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">Add Subject</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Subject Modal -->
+<div class="modal fade" id="editSubjectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+          <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-pencil-square fs-5" style="color: var(--nf-indigo) !important;"></i> Edit Subject
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" id="editSubjectForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="semester" id="editSubjectSem" value="{{ selected_sem.pk }}">
+          <div class="mb-3 text-start">
+            <label class="form-label fw-semibold text-dark small">Subject Name</label>
+            <input type="text" name="name" id="editSubjectName" class="form-control" required>
+          </div>
+          <div class="row g-2 mb-4 text-start">
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">Subject Code</label>
+              <input type="text" name="subject_code" id="editSubjectCode" class="form-control" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold text-dark small">Credits</label>
+              <input type="number" name="credits" id="editSubjectCredits" class="form-control" min="1" max="10" required>
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-pill px-4 fw-semibold">Save Changes</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent">
+      <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+        <div class="btn-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3" style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+        </div>
+        
+        <h4 class="fw-bold text-dark mb-2">Delete "<span id="deleteObjectName"></span>"?</h4>
+        <p class="text-secondary small mb-4 px-md-3">
+          Are you sure you want to permanently delete this item? This action cannot be undone and all associated records will be removed.
+        </p>
+
+        <form method="post" id="deleteForm" action="">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <button type="submit" class="btn btn-danger btn-pill px-4 py-2 fw-semibold">Yes, Delete</button>
+            <button type="button" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- JSON data for dynamic client-side semester loading -->
+<script id="deptSemestersData" type="application/json">
+{
+  {% for d in departments %}
+    "{{ d.pk }}": [
+      {% for s in d.semesters.all %}
+        {"id": "{{ s.pk }}", "number": "{{ s.number }}"}{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]{% if not forloop.last %},{% endif %}
+  {% endfor %}
+}
+</script>
+
+<script>
+  function deptChanged() {
+    const deptSelect = document.getElementById('deptSelect');
+    const semSel = document.getElementById('semSelect');
+    const deptId = deptSelect ? deptSelect.value : '';
+    const dataScript = document.getElementById('deptSemestersData');
+    let data = {};
+    try {
+      data = dataScript ? JSON.parse(dataScript.textContent || '{}') : {};
+    } catch (e) {
+      data = {};
+    }
+
+    semSel.innerHTML = '';
+
+    if (!deptId) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— Select Department First —';
+      semSel.appendChild(opt);
+      semSel.disabled = true;
+    } else if (data[deptId] && data[deptId].length > 0) {
+      const defaultOpt = document.createElement('option');
+      defaultOpt.value = '';
+      defaultOpt.textContent = '— Select Semester —';
+      semSel.appendChild(defaultOpt);
+
+      data[deptId].forEach(sem => {
+        const opt = document.createElement('option');
+        opt.value = sem.id;
+        opt.textContent = `Semester ${sem.number}`;
+        semSel.appendChild(opt);
+      });
+      semSel.disabled = false;
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— No Semesters Configured —';
+      semSel.appendChild(opt);
+      semSel.disabled = true;
+    }
+
+    document.getElementById('filterForm').submit();
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const deptSelect = document.getElementById('deptSelect');
+    const semSel = document.getElementById('semSelect');
+    if (deptSelect && deptSelect.value && semSel) {
+      const dataScript = document.getElementById('deptSemestersData');
+      let data = {};
+      try {
+        data = dataScript ? JSON.parse(dataScript.textContent || '{}') : {};
+      } catch (e) {}
+      if (data[deptSelect.value] && data[deptSelect.value].length > 0) {
+        semSel.disabled = false;
+      }
+    }
+
+    const editSubModal = document.getElementById('editSubjectModal');
+    if (editSubModal) {
+      editSubModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        document.getElementById('editSubjectName').value = button.getAttribute('data-name');
+        document.getElementById('editSubjectCode').value = button.getAttribute('data-code');
+        document.getElementById('editSubjectCredits').value = button.getAttribute('data-credits');
+        document.getElementById('editSubjectSem').value = button.getAttribute('data-sem');
+        document.getElementById('editSubjectForm').action = button.getAttribute('data-url');
+      });
+    }
+
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+      deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        document.getElementById('deleteObjectName').textContent = button.getAttribute('data-name');
+        document.getElementById('deleteForm').action = button.getAttribute('data-url');
+      });
+    }
+  });
+</script>
+{% endblock %}
+

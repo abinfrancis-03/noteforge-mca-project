@@ -1,0 +1,558 @@
+{% extends 'base.html' %}
+{% block title %}AI Content Analysis (Phase 4) — Noteforge{% endblock %}
+{% block topbar_title %}AI Assessment Engine &bull; Content Analysis{% endblock %}
+
+{% block content %}
+<style>
+  .phase-badge {
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    border: 1px solid #bfdbfe;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .step-pill.completed {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    text-decoration: none;
+  }
+  .step-pill.completed:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+  }
+  .step-pill.active {
+    background-color: var(--nf-indigo);
+    color: #ffffff;
+  }
+  .step-pill.upcoming {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border: 1px dashed #cbd5e1;
+  }
+  .analysis-card {
+    border: 1px solid #eef2f6;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+  }
+  .analysis-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  }
+  .source-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .json-code-box {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #1e293b;
+    background-color: #0f172a;
+    color: #f8fafc;
+    border-radius: 8px;
+    padding: 1.25rem;
+    max-height: 520px;
+    overflow-y: auto;
+  }
+  .nav-pills .nav-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 8px;
+    padding: 8px 16px;
+    transition: all 0.15s ease;
+  }
+  .nav-pills .nav-link.active {
+    background-color: var(--nf-indigo);
+    color: #ffffff;
+  }
+  .nav-pills .nav-link:hover:not(.active) {
+    background-color: #f1f5f9;
+    color: #1e293b;
+  }
+</style>
+
+<!-- Phase Stepper Indicator -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <span class="phase-badge"><i class="bi bi-cpu-fill me-1"></i>Phase 4 of 5</span>
+    <h5 class="mb-0 fw-bold text-dark">AI Content Analysis & Extraction</h5>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{% url 'teacher_quiz_list' %}" class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 1. Config
+    </a>
+    <a href="{% url 'teacher_quiz_extracted_text' quiz.pk %}" class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 2. Preprocessing
+    </a>
+    <a href="{% url 'teacher_quiz_chunks' quiz.pk %}" class="step-pill completed">
+      <i class="bi bi-check-circle-fill text-success"></i> 3. Chunks
+    </a>
+    <span class="step-pill active shadow-sm">
+      <i class="bi bi-cpu"></i> 4. AI Analysis
+    </span>
+    <a href="{% url 'teacher_quiz_ranked_concepts' quiz.pk %}" class="step-pill completed">
+      <i class="bi bi-award"></i> 5. Concept Ranking
+    </a>
+    <span class="step-pill upcoming">
+      6. Question Synthesis
+    </span>
+  </div>
+</div>
+
+<!-- Header Info Bar -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+  <div class="card-body p-4">
+    <div class="row align-items-center g-3">
+      <div class="col-lg-8">
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 fw-semibold">
+            {{ quiz.subject.name }} ({{ quiz.subject.subject_code }})
+          </span>
+          <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">
+            {{ quiz.subject.department.code }} &bull; Semester {{ quiz.subject.semester.number }}
+          </span>
+          {% if analysis.model_name %}
+            <span class="badge bg-dark text-white rounded-pill px-3 py-1 fw-normal font-monospace" style="font-size: 11px;">
+              <i class="bi bi-robot me-1 text-info"></i>{{ analysis.model_name }}
+            </span>
+          {% endif %}
+        </div>
+        <h4 class="fw-bold text-dark mb-1">{{ quiz.title }}</h4>
+        <p class="text-muted small mb-0">
+          Source Document: <span class="fw-semibold text-dark">{{ quiz.pdf_file.name|default:"Uploaded PDF" }}</span> &bull; 
+          <span class="fw-semibold text-indigo">{{ chunks_count }} Semantic Chunks Analyzed</span> &bull;
+          Last analyzed {{ analysis.updated_at|date:"d M Y, h:i A" }}
+        </p>
+      </div>
+
+      <div class="col-lg-4 text-lg-end d-flex align-items-center justify-content-lg-end gap-2 flex-wrap">
+        <a href="{% url 'teacher_quiz_analysis' quiz.pk %}?reanalyze=1" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1.5" onclick="return confirm('Re-run AI Content Analysis on all semantic chunks?');">
+          <i class="bi bi-arrow-clockwise"></i>
+          <span>Re-analyze Chunks</span>
+        </a>
+        <a href="{% url 'teacher_quiz_chunks' quiz.pk %}" class="btn btn-sm btn-subtle-primary rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1.5">
+          <i class="bi bi-diagram-3"></i>
+          <span>View Chunks</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not has_api_key %}
+<div class="alert alert-info border-0 rounded-4 shadow-sm mb-4 d-flex align-items-start gap-3 p-3.5">
+  <i class="bi bi-info-circle-fill fs-4 text-info flex-shrink-0 mt-0.5"></i>
+  <div>
+    <h6 class="fw-bold mb-1">Operating in Deterministic Content Extraction Mode</h6>
+    <p class="small text-muted mb-0">
+      No <code>GEMINI_API_KEY</code> was detected in the environment. Noteforge's built-in deterministic educational extractor processed the semantic chunks into structured topics, definitions, concepts, and formulas. To switch to live Gemini LLM extraction, simply set <code>GEMINI_API_KEY="your-key"</code> in your environment or <code>.env</code> file.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+<!-- KPI Metrics Overview -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white">
+      <div class="text-secondary small fw-semibold text-uppercase mb-1" style="font-size: 11px;">Topics & Subtopics</div>
+      <div class="fs-3 fw-bold text-indigo mb-0">{{ analysis.total_topics }} <span class="fs-6 text-muted fw-normal">/ {{ analysis.total_subtopics }}</span></div>
+      <span class="text-muted" style="font-size: 11px;">Hierarchical Units</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white">
+      <div class="text-secondary small fw-semibold text-uppercase mb-1" style="font-size: 11px;">Definitions</div>
+      <div class="fs-3 fw-bold text-success mb-0">{{ analysis.total_definitions }}</div>
+      <span class="text-muted" style="font-size: 11px;">Key Academic Terms</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white">
+      <div class="text-secondary small fw-semibold text-uppercase mb-1" style="font-size: 11px;">Important Concepts</div>
+      <div class="fs-3 fw-bold text-primary mb-0">{{ analysis.total_concepts }}</div>
+      <span class="text-muted" style="font-size: 11px;">Core Principles</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white">
+      <div class="text-secondary small fw-semibold text-uppercase mb-1" style="font-size: 11px;">Processes & Steps</div>
+      <div class="fs-3 fw-bold text-warning mb-0">{{ analysis.total_processes }}</div>
+      <span class="text-muted" style="font-size: 11px;">Procedural Workflows</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white">
+      <div class="text-secondary small fw-semibold text-uppercase mb-1" style="font-size: 11px;">Formulas & Rules</div>
+      <div class="fs-3 fw-bold text-danger mb-0">{{ analysis.total_formulas }}</div>
+      <span class="text-muted" style="font-size: 11px;">Axioms & Equations</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 bg-white">
+      <div class="text-secondary small fw-semibold text-uppercase mb-1" style="font-size: 11px;">Comparisons / Rel.</div>
+      <div class="fs-3 fw-bold text-info mb-0">{{ analysis.total_comparisons|add:analysis.total_relationships }}</div>
+      <span class="text-muted" style="font-size: 11px;">Cross-Entity Links</span>
+    </div>
+  </div>
+</div>
+
+<!-- Categorized View Navigation -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+  <div class="card-header bg-white border-bottom p-3">
+    <ul class="nav nav-pills gap-1 flex-wrap" id="analysisTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="topics-tab" data-bs-toggle="pill" data-bs-target="#topics-pane" type="button" role="tab">
+          <i class="bi bi-diagram-2 me-1.5"></i>Topics ({{ data.topics|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="definitions-tab" data-bs-toggle="pill" data-bs-target="#definitions-pane" type="button" role="tab">
+          <i class="bi bi-book me-1.5"></i>Definitions ({{ data.definitions|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="concepts-tab" data-bs-toggle="pill" data-bs-target="#concepts-pane" type="button" role="tab">
+          <i class="bi bi-lightbulb me-1.5"></i>Concepts ({{ data.important_concepts|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="processes-tab" data-bs-toggle="pill" data-bs-target="#processes-pane" type="button" role="tab">
+          <i class="bi bi-list-ol me-1.5"></i>Processes ({{ data.processes|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="formulas-tab" data-bs-toggle="pill" data-bs-target="#formulas-pane" type="button" role="tab">
+          <i class="bi bi-calculator me-1.5"></i>Formulas & Rules ({{ data.formulas|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="comparisons-tab" data-bs-toggle="pill" data-bs-target="#comparisons-pane" type="button" role="tab">
+          <i class="bi bi-arrow-left-right me-1.5"></i>Comparisons ({{ data.comparisons|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="applications-tab" data-bs-toggle="pill" data-bs-target="#applications-pane" type="button" role="tab">
+          <i class="bi bi-gear-wide-connected me-1.5"></i>Applications ({{ data.applications|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="rawjson-tab" data-bs-toggle="pill" data-bs-target="#rawjson-pane" type="button" role="tab">
+          <i class="bi bi-filetype-json me-1.5"></i>Structured JSON
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card-body p-4">
+    <div class="tab-content" id="analysisTabsContent">
+
+      <!-- 1. TOPICS & SUBTOPICS -->
+      <div class="tab-pane fade show active" id="topics-pane" role="tabpanel">
+        <div class="row g-3">
+          {% for topic in data.topics %}
+            <div class="col-12">
+              <div class="analysis-card p-3.5">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <h5 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-folder2-open text-primary me-2"></i>{{ topic.name }}
+                  </h5>
+                  <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1">
+                    {{ topic.subtopics|length }} Subtopic{{ topic.subtopics|length|pluralize }}
+                  </span>
+                </div>
+                <div class="list-group list-group-flush border-top">
+                  {% for sub in topic.subtopics %}
+                    <div class="list-group-item px-0 py-2.5 d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                      <div>
+                        <div class="fw-semibold text-dark mb-1">{{ sub.name }}</div>
+                        <div class="text-muted small">{{ sub.summary }}</div>
+                      </div>
+                      <div class="d-flex align-items-center gap-1.5">
+                        <span class="source-tag bg-light text-primary border">
+                          <i class="bi bi-layers me-1"></i>{{ sub.chunk_id }}
+                        </span>
+                        <span class="source-tag bg-light text-secondary border">
+                          <i class="bi bi-file-earmark me-1"></i>p. {{ sub.pages|join:", " }}
+                        </span>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted small">No topics extracted.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 2. DEFINITIONS -->
+      <div class="tab-pane fade" id="definitions-pane" role="tabpanel">
+        <div class="row g-3">
+          {% for def in data.definitions %}
+            <div class="col-md-6">
+              <div class="analysis-card p-3.5 h-100 d-flex flex-column justify-content-between">
+                <div>
+                  <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <span class="fw-bold text-dark fs-6">{{ def.term }}</span>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1" style="font-size: 10.5px;">
+                      Definition
+                    </span>
+                  </div>
+                  <p class="text-muted small mb-3 lh-base">{{ def.definition }}</p>
+                </div>
+                <div class="d-flex align-items-center gap-1.5 pt-2 border-top">
+                  <span class="source-tag bg-light text-primary border">
+                    <i class="bi bi-layers me-1"></i>{{ def.chunk_id }}
+                  </span>
+                  <span class="source-tag bg-light text-secondary border">
+                    <i class="bi bi-file-earmark me-1"></i>p. {{ def.pages|join:", " }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted small">No explicit definitions found.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 3. IMPORTANT CONCEPTS -->
+      <div class="tab-pane fade" id="concepts-pane" role="tabpanel">
+        <div class="row g-3">
+          {% for c in data.important_concepts %}
+            <div class="col-12">
+              <div class="analysis-card p-3.5">
+                <div class="d-flex align-items-start justify-content-between gap-3 mb-2 flex-wrap">
+                  <h6 class="fw-bold text-dark mb-0">{{ c.concept }}</h6>
+                  <div class="d-flex align-items-center gap-1.5">
+                    <span class="source-tag bg-light text-primary border">
+                      <i class="bi bi-layers me-1"></i>{{ c.chunk_id }}
+                    </span>
+                    <span class="source-tag bg-light text-secondary border">
+                      <i class="bi bi-file-earmark me-1"></i>p. {{ c.pages|join:", " }}
+                    </span>
+                  </div>
+                </div>
+                <p class="text-secondary small mb-2 lh-base">{{ c.explanation }}</p>
+                {% if c.significance %}
+                  <div class="small text-muted bg-light p-2.5 rounded-3 border-start border-primary border-3">
+                    <span class="fw-semibold text-dark">Academic Significance:</span> {{ c.significance }}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted small">No core concepts extracted.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 4. PROCESSES & WORKFLOWS -->
+      <div class="tab-pane fade" id="processes-pane" role="tabpanel">
+        <div class="row g-3">
+          {% for p in data.processes %}
+            <div class="col-12">
+              <div class="analysis-card p-3.5">
+                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                  <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-gear-fill text-warning me-1.5"></i>{{ p.name }}
+                  </h6>
+                  <div class="d-flex align-items-center gap-1.5">
+                    <span class="source-tag bg-light text-primary border">
+                      <i class="bi bi-layers me-1"></i>{{ p.chunk_id }}
+                    </span>
+                    <span class="source-tag bg-light text-secondary border">
+                      <i class="bi bi-file-earmark me-1"></i>p. {{ p.pages|join:", " }}
+                    </span>
+                  </div>
+                </div>
+                <ol class="list-group list-group-numbered border-top pt-2">
+                  {% for step in p.steps %}
+                    <li class="list-group-item border-0 px-0 py-1.5 small text-secondary">
+                      {{ step }}
+                    </li>
+                  {% endfor %}
+                </ol>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted small">No multi-step processes identified.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 5. FORMULAS & INFERENCE RULES -->
+      <div class="tab-pane fade" id="formulas-pane" role="tabpanel">
+        <div class="row g-3">
+          {% for f in data.formulas %}
+            <div class="col-md-6">
+              <div class="analysis-card p-3.5 h-100 d-flex flex-column justify-content-between">
+                <div>
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-bold text-dark">{{ f.name_or_rule }}</span>
+                    <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0.5" style="font-size: 10.5px;">Rule / Formula</span>
+                  </div>
+                  <div class="font-monospace bg-light p-2.5 rounded-3 text-dark fw-bold border mb-2" style="font-size: 13px;">
+                    {{ f.expression_or_rule }}
+                  </div>
+                  <p class="text-muted small mb-3">{{ f.explanation }}</p>
+                </div>
+                <div class="d-flex align-items-center gap-1.5 pt-2 border-top">
+                  <span class="source-tag bg-light text-primary border">
+                    <i class="bi bi-layers me-1"></i>{{ f.chunk_id }}
+                  </span>
+                  <span class="source-tag bg-light text-secondary border">
+                    <i class="bi bi-file-earmark me-1"></i>p. {{ f.pages|join:", " }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted small">No explicit mathematical or inference formulas found in text.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 6. COMPARISONS & RELATIONSHIPS -->
+      <div class="tab-pane fade" id="comparisons-pane" role="tabpanel">
+        <div class="row g-3">
+          {% for comp in data.comparisons %}
+            <div class="col-12">
+              <div class="analysis-card p-3.5">
+                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-info text-white rounded-pill px-3 py-1 fw-bold">{{ comp.item_a }}</span>
+                    <span class="text-muted small fw-bold">VS</span>
+                    <span class="badge bg-secondary text-white rounded-pill px-3 py-1 fw-bold">{{ comp.item_b }}</span>
+                  </div>
+                  <div class="d-flex align-items-center gap-1.5">
+                    <span class="source-tag bg-light text-primary border">
+                      <i class="bi bi-layers me-1"></i>{{ comp.chunk_id }}
+                    </span>
+                    <span class="source-tag bg-light text-secondary border">
+                      <i class="bi bi-file-earmark me-1"></i>p. {{ comp.pages|join:", " }}
+                    </span>
+                  </div>
+                </div>
+                <p class="text-secondary small mb-0 lh-base">{{ comp.distinction }}</p>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted small">No explicit entity comparisons extracted.</div>
+          {% endfor %}
+
+          {% if data.relationships %}
+            <div class="col-12 mt-4">
+              <h6 class="fw-bold text-dark mb-3">Entity Relationships</h6>
+              {% for rel in data.relationships %}
+                <div class="analysis-card p-3 mb-2">
+                  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+                    <div class="small fw-semibold text-dark">
+                      <span class="text-primary">{{ rel.entity_a }}</span> 
+                      <span class="badge bg-light text-dark border mx-1">{{ rel.relation }}</span> 
+                      <span class="text-success">{{ rel.entity_b }}</span>
+                    </div>
+                    <span class="source-tag bg-light text-secondary border">
+                      <i class="bi bi-layers me-1"></i>{{ rel.chunk_id }}
+                    </span>
+                  </div>
+                  <div class="text-muted small">{{ rel.description }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- 7. APPLICATIONS -->
+      <div class="tab-pane fade" id="applications-pane" role="tabpanel">
+        <div class="row g-3">
+          {% for app in data.applications %}
+            <div class="col-md-6">
+              <div class="analysis-card p-3.5 h-100 d-flex flex-column justify-content-between">
+                <div>
+                  <h6 class="fw-bold text-dark mb-2">
+                    <i class="bi bi-check-circle-fill text-success me-1.5"></i>{{ app.area }}
+                  </h6>
+                  <p class="text-muted small mb-3">{{ app.description }}</p>
+                </div>
+                <div class="d-flex align-items-center gap-1.5 pt-2 border-top">
+                  <span class="source-tag bg-light text-primary border">
+                    <i class="bi bi-layers me-1"></i>{{ app.chunk_id }}
+                  </span>
+                  <span class="source-tag bg-light text-secondary border">
+                    <i class="bi bi-file-earmark me-1"></i>p. {{ app.pages|join:", " }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted small">No practical applications extracted.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 8. RAW STRUCTURED JSON -->
+      <div class="tab-pane fade" id="rawjson-pane" role="tabpanel">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="text-muted small">Structured JSON payload with complete source provenance:</span>
+          <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1" onclick="copyJsonPayload()">
+            <i class="bi bi-clipboard me-1"></i><span id="copyBtnText">Copy JSON</span>
+          </button>
+        </div>
+        <pre class="json-code-box" id="jsonViewer">{{ raw_json }}</pre>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Navigation Controls -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-4 pt-3 border-top">
+  <a href="{% url 'teacher_quiz_chunks' quiz.pk %}" class="btn btn-outline-secondary rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2">
+    <i class="bi bi-arrow-left"></i>
+    <span>Back to Semantic Chunks (Phase 3)</span>
+  </a>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'teacher_quiz_list' %}" class="btn btn-light rounded-pill px-4 py-2 fw-semibold text-secondary">
+      Quizzes Hub
+    </a>
+    <a href="{% url 'teacher_quiz_ranked_concepts' quiz.pk %}" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-xs">
+      <span>Proceed to Concept Ranking (Phase 5)</span>
+      <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+</div>
+
+<script>
+function copyJsonPayload() {
+  const text = document.getElementById('jsonViewer').innerText;
+  navigator.clipboard.writeText(text).then(function() {
+    const btn = document.getElementById('copyBtnText');
+    btn.innerText = 'Copied!';
+    setTimeout(() => { btn.innerText = 'Copy JSON'; }, 2000);
+  });
+}
+</script>
+{% endblock %}

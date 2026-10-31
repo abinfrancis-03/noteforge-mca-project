@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Reset Password — Noteforge{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-md-7 col-lg-5">
+    <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+      <div class="btn-circle bg-warning bg-opacity-10 text-warning mx-auto mb-3" style="width: 56px; height: 56px;">
+        <i class="bi bi-key-fill fs-3"></i>
+      </div>
+      
+      <h4 class="fw-bold text-dark mb-2">Reset Password?</h4>
+      <p class="text-secondary small mb-4 px-md-3">
+        Reset password for <strong>{{ user_obj.get_full_name|default:user_obj.username }}</strong>? A new temporary password will be generated.
+      </p>
+
+      <form method="post" class="d-flex align-items-center justify-content-center gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:request.META.HTTP_REFERER }}">
+        <button type="submit" class="btn btn-primary btn-pill px-4 py-2 fw-semibold">Yes, Reset Password</button>
+        <a href="{% url cancel_url %}" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

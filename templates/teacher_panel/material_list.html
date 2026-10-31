@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}Study Materials — Noteforge{% endblock %}
+{% block topbar_title %}Curriculum Study Materials{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Study Materials</h4>
+    <p class="text-secondary small mb-0">Browse and upload course materials, notes, and resources for your department</p>
+  </div>
+  <a href="{% url 'teacher_material_add' %}{% if selected_sem %}?sem={{ selected_sem.pk }}{% if selected_sub %}&sub={{ selected_sub.pk }}{% endif %}{% endif %}" class="btn btn-primary rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm" style="font-size: 13px;">
+    <i class="bi bi-cloud-upload-fill"></i>
+    <span>Upload Material</span>
+  </a>
+</div>
+
+<!-- Filters Bar Card -->
+<div class="card bg-white p-3 mb-4">
+  <form method="get" id="matFilterForm" class="row g-2 align-items-center">
+    <!-- Semester Filter -->
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-funnel"></i></label>
+        <span class="input-group-text bg-light text-secondary border-start-0 border-end-0 small fw-semibold px-1">Semester:</span>
+        <select name="sem" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+          <option value="">— Select Semester —</option>
+          {% for s in semesters %}
+          <option value="{{ s.pk }}" {% if selected_sem and selected_sem.pk == s.pk %}selected{% endif %}>Semester {{ s.number }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Subject Filter (Cascading) -->
+    {% if selected_sem %}
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-book"></i></label>
+        <span class="input-group-text bg-light text-secondary border-start-0 border-end-0 small fw-semibold px-1">Subject:</span>
+        <select name="sub" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+          <option value="">— All Subjects in Sem {{ selected_sem.number }} —</option>
+          {% for sub in subjects %}
+          <option value="{{ sub.pk }}" {% if selected_sub and selected_sub.pk == sub.pk %}selected{% endif %}>{{ sub.subject_code }} — {{ sub.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if selected_sem or selected_sub %}
+    <div class="col-auto">
+      <a href="{% url 'teacher_material_list' %}" class="btn btn-sm btn-light border" style="font-size: 12.5px;">
+        <i class="bi bi-x-circle me-1"></i>Clear Filter
+      </a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+{% if selected_sem %}
+<!-- Study Materials Table Card -->
+<div class="card bg-white shadow-sm border-0 rounded-3 overflow-hidden" style="border: 1px solid #eef2f6 !important;">
+  <div class="card-header bg-white py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <h6 class="fw-bold text-dark mb-0" style="font-size: 14px;">
+        <i class="bi bi-folder2-open text-primary me-1"></i>Materials for Semester {{ selected_sem.number }}
+        {% if selected_sub %}&bull; <span class="text-primary font-monospace">{{ selected_sub.subject_code }}</span>{% endif %}
+      </h6>
+      <span class="badge bg-light text-dark border">{{ materials.count }} resource{{ materials.count|pluralize }}</span>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light bg-opacity-50">
+        <tr>
+          <th class="ps-4 text-muted small fw-semibold">TITLE</th>
+          <th class="text-muted small fw-semibold">SUBJECT</th>
+          <th class="text-muted small fw-semibold">DATE</th>
+          <th class="text-muted small fw-semibold">RESOURCE</th>
+          <th class="text-center text-muted small fw-semibold">QUIZ</th>
+          <th class="pe-4 text-end text-muted small fw-semibold">ACTIONS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in materials %}
+        <tr>
+          <td class="ps-4" style="max-width: 280px;">
+            <strong class="text-dark d-block" style="font-size: 13.5px;">{{ m.title }}</strong>
+            {% if m.description %}
+              <p class="text-muted small mb-0 text-truncate" style="font-size: 11.5px; max-width: 260px;">{{ m.description }}</p>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 font-monospace" style="font-size: 12px; font-weight: 600;">
+              {{ m.subject.subject_code }}
+            </span>
+          </td>
+          <td class="text-muted" style="font-size: 12px; white-space: nowrap;">
+            {{ m.created_at|date:"d M Y" }}
+          </td>
+          <td>
+            <div class="d-inline-flex gap-1.5 flex-wrap">
+              {% if m.file %}
+                <a href="{{ m.file.url }}" target="_blank" class="btn btn-xs btn-light border rounded-pill px-2.5 py-1 text-danger fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 11.5px;">
+                  <i class="bi bi-file-earmark-pdf-fill"></i>
+                  <span>View File</span>
+                </a>
+              {% endif %}
+              {% if m.external_link %}
+                <a href="{{ m.external_link }}" target="_blank" class="btn btn-xs btn-light border rounded-pill px-2.5 py-1 text-dark fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 11.5px;">
+                  <i class="bi bi-link-45deg text-info"></i>
+                  <span>Drive Link</span>
+                </a>
+              {% endif %}
+              {% if not m.file and not m.external_link %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </div>
+          </td>
+          <td class="text-center">
+            <a href="{% url 'teacher_ai_quiz_generate' m.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs" style="font-size: 11.5px;">
+              <i class="bi bi-stars"></i>
+              <span>Generate Quiz</span>
+            </a>
+          </td>
+          <td class="pe-4 text-end">
+            {% if m.uploaded_by == user %}
+            <div class="d-inline-flex gap-1.5 flex-wrap justify-content-end align-items-center">
+              <a href="{% url 'teacher_material_edit' m.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 11.5px;" title="Edit Material">
+                <i class="bi bi-pencil"></i>
+                <span>Edit</span>
+              </a>
+              <a href="{% url 'teacher_material_delete' m.pk %}" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 11.5px;" title="Delete Material">
+                <i class="bi bi-trash"></i>
+                <span>Delete</span>
+              </a>
+            </div>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-5 small">
+            <i class="bi bi-folder2-open fs-2 d-block mb-2 opacity-50 text-secondary"></i>
+            No study materials uploaded yet for Semester {{ selected_sem.number }}{% if selected_sub %} ({{ selected_sub.subject_code }}){% endif %}. <br>
+            <a href="{% url 'teacher_material_add' %}?sem={{ selected_sem.pk }}{% if selected_sub %}&sub={{ selected_sub.pk }}{% endif %}" class="fw-semibold text-primary mt-1 d-inline-block">Upload your first material →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<!-- Placeholder before semester selection -->
+<div class="card p-5 text-center text-muted border-0 shadow-sm rounded-4" style="background: #ffffff; border: 1.5px dashed #cbd5e1 !important;">
+  <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px; background: #eef2ff; color: var(--nf-indigo);">
+    <i class="bi bi-calendar3 fs-4"></i>
+  </div>
+  <h6 class="fw-bold text-dark mb-1">Select a Semester Above</h6>
+  <p class="text-secondary small mb-0" style="max-width: 440px; margin: 0 auto;">
+    Please select a semester from the dropdown above to display the uploaded study materials and notes for that term.
+  </p>
+</div>
+{% endif %}
+{% endblock %}
+

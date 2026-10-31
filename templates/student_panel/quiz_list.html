@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block title %}Examinations & Tests — Noteforge{% endblock %}
+{% block topbar_title %}Examinations & Quizzes{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Examinations & Practice Tests</h4>
+    <p class="text-secondary small mb-0">Take online objective assessments and adaptive practice tests published for Semester {{ student.semester.number }}</p>
+  </div>
+  <a href="{% url 'student_performance_analytics' %}" class="btn btn-sm btn-outline-primary fw-semibold rounded-3">
+    <i class="bi bi-bar-chart-line-fill me-1"></i> Performance Analytics
+  </a>
+</div>
+
+<!-- Filter by Subject -->
+<div class="card bg-white p-3 mb-4 shadow-sm border-0" style="border: 1px solid #eef2f6 !important; border-radius: 12px;">
+  <form method="get" class="row g-2 align-items-center">
+    <div class="col-md-5 col-lg-4">
+      <div class="input-group input-group-sm">
+        <label class="input-group-text bg-light text-secondary border-end-0"><i class="bi bi-funnel"></i></label>
+        <select name="sub" onchange="this.form.submit()" class="form-select form-select-sm border-start-0">
+          <option value="">— All Semester {{ student.semester.number }} Subjects —</option>
+          {% for s in subjects %}
+          <option value="{{ s.pk }}" {% if selected_sub and selected_sub.pk == s.pk %}selected{% endif %}>{{ s.subject_code }} — {{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% if selected_sub %}
+    <div class="col-auto">
+      <a href="{% url 'student_quiz_list' %}" class="btn btn-sm btn-light border"><i class="bi bi-x-circle me-1"></i>Clear Filter</a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Course Quizzes Table Card -->
+<div class="card bg-white shadow-sm border-0 rounded-3 overflow-hidden mb-4" style="border: 1px solid #eef2f6 !important;">
+  <div class="card-header bg-white py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <h6 class="fw-bold text-dark mb-0" style="font-size: 14px;"><i class="bi bi-pen-fill text-primary me-1.5"></i>Course Examinations</h6>
+      <span class="badge bg-light text-dark border">{{ quiz_data|length }} assessment{{ quiz_data|length|pluralize }}</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light bg-opacity-50">
+        <tr>
+          <th class="ps-4 text-muted small fw-semibold">QUIZ TITLE</th>
+          <th class="text-muted small fw-semibold">SUBJECT</th>
+          <th class="text-muted small fw-semibold text-center">TIME LIMIT</th>
+          <th class="text-muted small fw-semibold text-center">QUESTIONS</th>
+          <th class="text-muted small fw-semibold">STATUS / BEST SCORE</th>
+          <th class="pe-4 text-end text-muted small fw-semibold">ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in quiz_data %}
+        <tr>
+          <td class="ps-4">
+            <strong class="text-dark d-block" style="font-size: 13.5px;">{{ item.quiz.title }}</strong>
+            {% if item.quiz.description %}
+              <small class="text-muted">{{ item.quiz.description|truncatewords:10 }}</small>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11.5px;">
+              {{ item.quiz.subject.subject_code }}
+            </span>
+            <small class="d-block text-secondary mt-0.5" style="font-size: 0.75rem;">{{ item.quiz.subject.name }}</small>
+          </td>
+          <td class="text-center small text-secondary">
+            <i class="bi bi-clock me-1 text-muted"></i>{{ item.quiz.time_limit_mins }}m
+          </td>
+          <td class="text-center">
+            <span class="badge bg-light text-dark border">{{ item.quiz.questions.count }} MCQs</span>
+          </td>
+          <td>
+            {% if item.best_attempt %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold">
+                Score: {{ item.best_attempt.score }}/{{ item.best_attempt.total_questions }} ({{ item.best_attempt.percentage }}%)
+              </span>
+              <small class="d-block text-muted mt-0.5" style="font-size: 0.75rem;">Attempts: {{ item.attempt_count }}</small>
+            {% else %}
+              <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2.5 py-1 fw-semibold">
+                Not Attempted
+              </span>
+            {% endif %}
+          </td>
+          <td class="pe-4 text-end">
+            <div class="d-inline-flex gap-1.5 flex-wrap justify-content-end">
+              <a href="{% url 'student_quiz_take' item.quiz.pk %}" class="btn btn-sm {% if item.best_attempt %}btn-outline-primary{% else %}btn-primary{% endif %} rounded-pill px-3 fw-semibold">
+                {% if item.best_attempt %}<i class="bi bi-arrow-repeat me-1"></i>Retake{% else %}Start Quiz <i class="bi bi-arrow-right ms-1"></i>{% endif %}
+              </a>
+              {% if item.latest_attempt %}
+                <a href="{% url 'student_quiz_result' item.quiz.pk item.latest_attempt.pk %}" class="btn btn-sm btn-light border rounded-pill px-3">
+                  Review
+                </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-5 small">No active quizzes found for your current subjects.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Adaptive Practice Tests Card & Table -->
+{% if practice_data %}
+<div class="card bg-white shadow-sm border-0 rounded-3 overflow-hidden mb-4" style="border: 1px solid #eef2f6 !important; border-left: 4px solid var(--nf-indigo) !important;">
+  <div class="card-header bg-white py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-1.5" style="font-size: 14px;">
+        <i class="bi bi-lightning-charge-fill text-warning"></i> Personalized Adaptive Practice Tests
+      </h6>
+      <p class="text-secondary small mb-0">Custom assessments generated from your diagnosed weak topics focusing on Understanding & Application</p>
+    </div>
+    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold">
+      {{ practice_data|length }} Practice Test{{ practice_data|length|pluralize }}
+    </span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light bg-opacity-50">
+        <tr>
+          <th class="ps-4 text-muted small fw-semibold">TARGETED TOPIC / TITLE</th>
+          <th class="text-muted small fw-semibold">SUBJECT</th>
+          <th class="text-muted small fw-semibold">PEDAGOGICAL FOCUS</th>
+          <th class="text-muted small fw-semibold text-center">QUESTIONS</th>
+          <th class="text-muted small fw-semibold">PERFORMANCE</th>
+          <th class="pe-4 text-end text-muted small fw-semibold">ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in practice_data %}
+        <tr>
+          <td class="ps-4">
+            <strong class="text-dark d-block" style="font-size: 13.5px;">{{ item.quiz.title }}</strong>
+            <small class="text-muted">
+              Diagnosed Weak Topic: <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5" style="font-size: 10.5px;">{{ item.quiz.practice_topic }}</span>
+            </small>
+          </td>
+          <td>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11.5px;">
+              {{ item.quiz.subject.subject_code }}
+            </span>
+          </td>
+          <td>
+            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-2.5 py-1" style="font-size: 11px;">
+              Understand & Apply
+            </span>
+          </td>
+          <td class="text-center">
+            <span class="badge bg-light text-dark border">{{ item.quiz.questions.count }} MCQs</span>
+          </td>
+          <td>
+            {% if item.best_attempt %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold">
+                Score: {{ item.best_attempt.score }}/{{ item.best_attempt.total_questions }} ({{ item.best_attempt.percentage }}%)
+              </span>
+              <small class="d-block text-muted mt-0.5" style="font-size: 0.75rem;">Attempts: {{ item.attempt_count }}</small>
+            {% else %}
+              <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2.5 py-1 fw-semibold">
+                Not Practiced Yet
+              </span>
+            {% endif %}
+          </td>
+          <td class="pe-4 text-end">
+            <div class="d-inline-flex gap-1.5 flex-wrap justify-content-end">
+              <a href="{% url 'student_quiz_take' item.quiz.pk %}" class="btn btn-sm {% if item.best_attempt %}btn-outline-primary{% else %}btn-primary{% endif %} rounded-pill px-3 fw-semibold">
+                {% if item.best_attempt %}Practice Again <i class="bi bi-arrow-repeat ms-1"></i>{% else %}Start Practice <i class="bi bi-lightning-charge ms-1"></i>{% endif %}
+              </a>
+              {% if item.latest_attempt %}
+                <a href="{% url 'student_quiz_result' item.quiz.pk item.latest_attempt.pk %}" class="btn btn-sm btn-light border rounded-pill px-3">
+                  Review Results
+                </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

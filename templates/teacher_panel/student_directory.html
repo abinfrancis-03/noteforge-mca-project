@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% block title %}Student Directory — Noteforge{% endblock %}
+{% block topbar_title %}Department Student Directory{% endblock %}
+
+{% block content %}
+<style>
+  .batch-card {
+    padding: 1.15rem 1.25rem !important;
+    border-radius: 0.85rem !important;
+    border: 1px solid #e2e8f0 !important;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, border-color 0.18s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 175px;
+  }
+  .batch-card:hover {
+    transform: translateY(-3px);
+    border-color: #6366f1 !important;
+    box-shadow: 0 10px 22px -3px rgba(99, 102, 241, 0.12), 0 3px 8px -2px rgba(0, 0, 0, 0.03) !important;
+  }
+  .card-icon-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2ff;
+    color: var(--nf-indigo, #4f46e5);
+  }
+</style>
+
+{% if not selected_batch %}
+<!-- ============================================================ -->
+<!-- STEP 1: SELECT BATCH CARDS (WITH CURRENT SEMESTER BADGE)     -->
+<!-- ============================================================ -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 pb-2">
+  <div>
+    <h5 class="fw-bold text-dark mb-1">Student Directory</h5>
+    <p class="text-secondary small mb-0" style="font-size: 12.5px;">Select an academic batch to view enrolled students &bull; <strong>{{ department.name }} ({{ department.code }})</strong></p>
+  </div>
+  <button onclick="new bootstrap.Modal(document.getElementById('enrollModal')).show()" class="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm" style="font-size: 12.5px;">
+    <i class="bi bi-person-plus-fill"></i>
+    <span>Enroll Student</span>
+  </button>
+</div>
+
+<div class="row g-3 mt-3 mb-5">
+  {% for b in batches %}
+  <div class="col-sm-6 col-md-4 col-xl-3">
+    <a href="{% url 'teacher_student_directory' %}?batch={{ b.pk }}" class="text-decoration-none">
+      <div class="card h-100 bg-white batch-card">
+        <div class="d-flex align-items-center justify-content-between mb-2.5">
+          <div class="card-icon-box shadow-xs">
+            <i class="bi bi-mortarboard-fill fs-5"></i>
+          </div>
+          {% if b.current_semester %}
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-0.5 fw-semibold" style="font-size: 11px;">
+            Semester {{ b.current_semester.number }}
+          </span>
+          {% elif b.is_ongoing %}
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 fw-semibold" style="font-size: 10.5px;">
+            Active
+          </span>
+          {% else %}
+          <span class="badge bg-light text-secondary border rounded-pill px-2 py-0.5" style="font-size: 10.5px;">
+            Completed
+          </span>
+          {% endif %}
+        </div>
+
+        <h6 class="fw-bold text-dark mb-0.5 text-truncate" style="font-size: 15px;">{{ b.name }}</h6>
+        <p class="text-muted small mb-2.5 text-truncate" style="font-size: 11.5px;">
+          <i class="bi bi-calendar3 me-1 text-secondary"></i>{{ b.start_year }} – {{ b.end_year }} &bull; {{ department.code }}
+        </p>
+
+        <div class="mb-2">
+          <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11.5px;">
+            <i class="bi bi-people-fill me-1 text-primary"></i>{{ b.student_count }} Enrolled Student{{ b.student_count|pluralize }}
+          </span>
+        </div>
+
+        <div class="mt-auto pt-2.5 border-top d-flex align-items-center justify-content-between text-primary small fw-semibold" style="font-size: 11.5px;">
+          <span>View Students</span>
+          <i class="bi bi-arrow-right"></i>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card bg-white p-5 text-center text-muted rounded-4 border">
+      <i class="bi bi-inbox fs-2 mb-1.5 text-secondary"></i>
+      <h6 class="fw-bold text-dark mb-1">No Batches Found</h6>
+      <p class="small text-muted mb-0">No academic batches have been configured for {{ department.name }} yet.</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<!-- ============================================================ -->
+<!-- STEP 2: DIRECTLY SHOW STUDENTS ENROLLED IN SELECTED BATCH    -->
+<!-- ============================================================ -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 pb-2">
+  <div class="d-flex align-items-center gap-3">
+    <a href="{% url 'teacher_student_directory' %}" class="btn btn-sm btn-light border rounded-pill px-3 py-1.5 text-secondary d-inline-flex align-items-center gap-1.5" style="font-size: 12.5px;">
+      <i class="bi bi-arrow-left"></i>
+      <span>Back to Batches</span>
+    </a>
+    <div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <h5 class="fw-bold text-dark mb-0" style="font-size: 16px;">
+          {{ selected_batch.name }}
+          {% if selected_batch.current_semester %}
+          <span class="text-secondary fw-normal">&bull; Semester {{ selected_batch.current_semester.number }}</span>
+          {% endif %}
+        </h5>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-0.5 font-monospace" style="font-size: 11px;">
+          {{ department.code }}
+        </span>
+        <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-0.5" style="font-size: 11px;">
+          {{ selected_batch.start_year }} – {{ selected_batch.end_year }}
+        </span>
+      </div>
+      <p class="text-secondary small mb-0 mt-0.5" style="font-size: 12px;">Showing students enrolled in <strong>{{ selected_batch.name }}</strong> ({{ students.count }} total)</p>
+    </div>
+  </div>
+  <button onclick="new bootstrap.Modal(document.getElementById('enrollModal')).show()" class="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm" style="font-size: 12.5px;">
+    <i class="bi bi-person-plus-fill"></i>
+    <span>Enroll Student</span>
+  </button>
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="card bg-white p-3 mb-4 rounded-3 border" style="border: 1px solid #eef2f6 !important;">
+  <form method="get" class="row g-2 align-items-center">
+    <input type="hidden" name="batch" value="{{ selected_batch.pk }}">
+    <div class="col-md-6 col-lg-5">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by name, email, Register No…" class="form-control border-start-0">
+      </div>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-sm btn-primary px-3 rounded-pill">Search</button>
+      {% if query %}
+      <a href="{% url 'teacher_student_directory' %}?batch={{ selected_batch.pk }}" class="btn btn-sm btn-light border rounded-pill px-3">Clear</a>
+      {% endif %}
+    </div>
+    <div class="col text-end d-none d-md-block">
+      <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1">
+        {{ students.count }} Enrolled Student{{ students.count|pluralize }}
+      </span>
+    </div>
+  </form>
+</div>
+
+<!-- Student Roster Table -->
+<div class="card bg-white shadow-sm border rounded-3 overflow-hidden mb-5" style="border: 1px solid #eef2f6 !important;">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light bg-opacity-50">
+        <tr>
+          <th class="ps-4 py-3">Register No</th>
+          <th class="py-3">Student Name</th>
+          <th class="py-3">Email</th>
+          <th class="py-3">Semester</th>
+          <th class="py-3">Batch</th>
+          <th class="pe-4 py-3">First-Login Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td class="ps-4 py-3"><code class="fw-semibold text-dark">{{ s.username }}</code></td>
+          <td class="py-3"><strong>{{ s.get_full_name|default:"—" }}</strong></td>
+          <td class="py-3 small text-muted">{{ s.email|default:"—" }}</td>
+          <td class="py-3">
+            {% if s.semester %}
+            <span class="badge bg-light text-dark border">Semester {{ s.semester.number }}</span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="py-3"><span class="badge bg-secondary-subtle text-secondary-emphasis">{{ s.batch|default:"—" }}</span></td>
+          <td class="pe-4 py-3">
+            {% if s.is_first_login %}
+            <span class="badge bg-danger-subtle text-danger">Pending First Login</span>
+            {% else %}
+            <span class="badge bg-success-subtle text-success">Active</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-5 small">
+            No registered students found in {{ selected_batch.name }} matching your search.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Enroll Student Modal -->
+<div class="modal fade" id="enrollModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-dark fs-6">Enroll Student in {{ department.code }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-dark">First Name *</label>
+              <input type="text" name="first_name" class="form-control" placeholder="First name" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-dark">Last Name</label>
+              <input type="text" name="last_name" class="form-control" placeholder="Last name">
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold text-dark">University Register No (Username) *</label>
+              <input type="text" name="username" class="form-control" placeholder="e.g. MCA2024045" required>
+              <div class="form-text small">System checks uniqueness to prevent duplicate profiles.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold text-dark">Email Address</label>
+              <input type="email" name="email" class="form-control" placeholder="student@college.edu">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-dark">Batch *</label>
+              <select name="batch" class="form-select" required>
+                <option value="">Select Batch</option>
+                {% for b in batches %}
+                <option value="{{ b.pk }}" {% if selected_batch and selected_batch.pk == b.pk %}selected{% endif %}>{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-dark">Semester</label>
+              <select name="semester" class="form-select">
+                <option value="">Default (Batch Semester)</option>
+                {% for s in all_department_semesters %}
+                <option value="{{ s.pk }}" {% if selected_batch and selected_batch.current_semester_id == s.pk %}selected{% endif %}>Semester {{ s.number }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold text-dark">Date of Birth *</label>
+              <input type="date" name="date_of_birth" class="form-control" required>
+              <div class="form-text small">Initial password will be set to DOB (DDMMYYYY format).</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-top bg-light px-4 py-2.5">
+          <button type="button" class="btn btn-sm btn-light border rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm">Enroll Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

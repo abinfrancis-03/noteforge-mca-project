@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+{% block title %}Video Lecture Summarizer — Noteforge{% endblock %}
+{% block topbar_title %}Video-to-Text Lecture Summarizer{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1">Video-to-Text Lecture Summarizer</h4>
+    <p class="text-secondary small mb-0">Paste any educational YouTube lecture URL to generate chapterized notes & PDF downloads</p>
+  </div>
+  {% if summary_notes %}
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="copySummaryText()" id="copyBtn">
+      <i class="bi bi-clipboard me-1"></i> Copy Notes
+    </button>
+    <form method="post" class="m-0">
+      {% csrf_token %}
+      <input type="hidden" name="url" value="{{ youtube_url }}">
+      <input type="hidden" name="action" value="save_summary">
+      <input type="hidden" name="summary_text" value="{{ summary_notes }}">
+      <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold shadow-sm">
+        <i class="bi bi-bookmark-star-fill me-1"></i> Save to Library
+      </button>
+    </form>
+    <form method="post" class="m-0">
+      {% csrf_token %}
+      <input type="hidden" name="url" value="{{ youtube_url }}">
+      <input type="hidden" name="action" value="download_pdf">
+      <input type="hidden" name="summary_text" value="{{ summary_notes }}">
+      <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-semibold shadow-sm">
+        <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Input Form Card -->
+<div class="card bg-white p-4 mb-4 mx-auto shadow-sm border-0 rounded-4" style="max-width: 920px; border: 1px solid #e2e8f0 !important;">
+  <form method="get" id="summarizeForm" onsubmit="showLoadingState()">
+    <label class="form-label fw-semibold text-dark mb-2">YouTube Video URL</label>
+    <div class="input-group">
+      <span class="input-group-text bg-light text-danger border-end-0"><i class="bi bi-youtube fs-5"></i></span>
+      <input type="url" name="url" value="{{ youtube_url }}" class="form-control border-start-0" placeholder="https://www.youtube.com/watch?v=..." required id="youtubeUrlInput">
+      <button type="submit" class="btn btn-primary px-4 fw-semibold" id="summarizeBtn">
+        <i class="bi bi-sparkles me-1"></i>Summarize Video
+      </button>
+    </div>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+      <div class="form-text small text-muted mb-0">Supports NPTEL, university lectures, and educational YouTube tutorials with captions.</div>
+      {% if has_gemini_key %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.75rem;">
+          <i class="bi bi-patch-check-fill me-1"></i>Gemini AI Active
+        </span>
+      {% else %}
+        <button type="button" class="btn btn-link text-primary p-0 small text-decoration-none" data-bs-toggle="modal" data-bs-target="#geminiKeyModal" style="font-size: 0.75rem;">
+          <i class="bi bi-key-fill me-1"></i>Connect Gemini Key
+        </button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Error or Notice Alert -->
+{% if error_message %}
+<div class="alert alert-warning border border-warning-subtle shadow-sm rounded-4 mx-auto mb-4 d-flex align-items-center justify-content-between p-3" style="max-width: 920px;">
+  <div class="d-flex align-items-center gap-3">
+    <div class="bg-warning text-dark rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+      <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    </div>
+    <div>
+      <h6 class="fw-bold mb-0 text-dark">Video Processing Notice</h6>
+      <p class="small text-secondary mb-0">{{ error_message }}</p>
+    </div>
+  </div>
+  {% if not has_gemini_key %}
+  <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold flex-shrink-0" data-bs-toggle="modal" data-bs-target="#geminiKeyModal">
+    <i class="bi bi-key-fill me-1"></i>Connect API
+  </button>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Result Section -->
+{% if video_id and summary_notes %}
+<div class="row g-4 mx-auto" style="max-width: 1200px;">
+  <!-- Video Player Preview -->
+  <div class="col-lg-5">
+    <div class="card bg-white shadow-sm border-0 rounded-4 overflow-hidden h-100" style="border: 1px solid #e2e8f0 !important;">
+      <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
+          <i class="bi bi-play-btn-fill me-2 text-danger fs-5"></i>Video Preview
+        </h6>
+        <span class="badge bg-light text-muted border rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
+          ID: {{ video_id }}
+        </span>
+      </div>
+      <div class="card-body p-3">
+        <div class="ratio ratio-16x9 rounded-3 overflow-hidden shadow-2xs mb-3 border">
+          <iframe src="https://www.youtube.com/embed/{{ video_id }}" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+        <h6 class="fw-bold text-dark mb-1">{{ video_title }}</h6>
+        <p class="small text-muted mb-2">Original lecture source for this synthesized master note.</p>
+        <div class="d-flex align-items-center gap-2 pt-2 border-top">
+          <a href="{{ youtube_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open on YouTube
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chapterized AI Notes -->
+  <div class="col-lg-7">
+    <div class="card bg-white shadow-sm border-0 rounded-4 overflow-hidden h-100" style="border: 1px solid #e2e8f0 !important;">
+      <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: var(--nf-indigo) !important;">
+            <i class="bi bi-journal-text fs-6"></i>
+          </div>
+          <div>
+            <span class="fw-bold text-dark" style="font-size: 14.5px;">Synthesized Study Notes</span>
+            <small class="text-muted d-block" style="font-size: 0.72rem;">Extracted {{ extracted_length }} characters from lecture</small>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold">
+            <i class="bi bi-cpu-fill me-1"></i>{{ engine_name }}
+          </span>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold">
+            <i class="bi bi-check2-circle me-1"></i>Exam Ready
+          </span>
+        </div>
+      </div>
+
+      <!-- Raw summary text for Markdown parsing -->
+      <textarea id="rawSummaryText" style="display: none;">{{ summary_notes }}</textarea>
+
+      <!-- Rendered Markdown Container -->
+      <div class="card-body p-4 p-md-4 study-notes-body" id="renderedSummary">
+        {{ summary_notes|linebreaks }}
+      </div>
+
+      <div class="card-footer bg-light border-top d-flex align-items-center justify-content-between py-3 px-4 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <form method="post" class="m-0">
+            {% csrf_token %}
+            <input type="hidden" name="url" value="{{ youtube_url }}">
+            <input type="hidden" name="action" value="save_summary">
+            <input type="hidden" name="summary_text" value="{{ summary_notes }}">
+            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold">
+              <i class="bi bi-bookmark-star me-1"></i> Save to Library
+            </button>
+          </form>
+          <button type="button" class="btn btn-sm btn-light border rounded-pill px-3" onclick="copySummaryText()">
+            <i class="bi bi-clipboard me-1"></i> Copy
+          </button>
+        </div>
+        <form method="post" class="m-0">
+          {% csrf_token %}
+          <input type="hidden" name="url" value="{{ youtube_url }}">
+          <input type="hidden" name="action" value="download_pdf">
+          <input type="hidden" name="summary_text" value="{{ summary_notes }}">
+          <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Styling matching NoteForge Study Notes -->
+<style>
+  .study-notes-body {
+    font-size: 14.5px;
+    line-height: 1.8;
+    color: #1e293b;
+    max-height: 720px;
+    overflow-y: auto;
+  }
+  .study-notes-body h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  .study-notes-body h2 {
+    font-size: 16.5px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 24px;
+    margin-bottom: 12px;
+  }
+  .study-notes-body h3 {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 16px;
+    margin-bottom: 8px;
+  }
+  .study-notes-body ul, .study-notes-body ol {
+    padding-left: 22px;
+    margin-bottom: 16px;
+  }
+  .study-notes-body li {
+    margin-bottom: 6px;
+  }
+  .study-notes-body strong {
+    color: #0f172a;
+  }
+  .study-notes-body table {
+    width: 100%;
+    margin: 18px 0;
+    border-collapse: collapse;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #ffffff;
+  }
+  .study-notes-body table th {
+    background-color: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+  }
+  .study-notes-body table td {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+  }
+  .study-notes-body table tr:hover td {
+    background-color: #f8fafc;
+  }
+</style>
+
+<!-- Marked.js CDN for client-side Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const rawEl = document.getElementById('rawSummaryText');
+    const target = document.getElementById('renderedSummary');
+    if (rawEl && target && typeof marked !== 'undefined') {
+      const rawText = rawEl.value;
+      if (rawText && rawText.trim()) {
+        target.innerHTML = marked.parse(rawText);
+      }
+    }
+  });
+
+  function showLoadingState() {
+    const btn = document.getElementById('summarizeBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Transcribing & Summarizing...';
+    }
+  }
+
+  function copySummaryText() {
+    const rawEl = document.getElementById('rawSummaryText');
+    if (!rawEl) return;
+    navigator.clipboard.writeText(rawEl.value).then(function() {
+      const btn = document.getElementById('copyBtn');
+      if (btn) {
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1 text-success"></i> Copied!';
+        setTimeout(function() {
+          btn.innerHTML = origHtml;
+        }, 2000);
+      }
+    });
+  }
+</script>
+
+<!-- Gemini API Key Configuration Modal -->
+<div class="modal fade" id="geminiKeyModal" tabindex="-1" aria-labelledby="geminiKeyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="geminiKeyModalLabel">
+          <i class="bi bi-robot text-primary"></i> Connect Google Gemini API
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'student_save_gemini_key' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <div class="modal-body p-4">
+          <p class="text-secondary small mb-3">
+            NoteForge uses Google Gemini LLM to synthesize lecture transcripts into exam-ready master notes.
+          </p>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-dark">Google Gemini API Key</label>
+            <input type="password" name="gemini_api_key" class="form-control rounded-3" placeholder="AIzaSy..." required>
+            <div class="form-text mt-1" style="font-size: 0.76rem;">
+              You can generate a free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-primary text-decoration-none">Google AI Studio <i class="bi bi-box-arrow-up-right"></i></a>.
+            </div>
+          </div>
+          <div class="alert alert-light border small text-muted p-2 rounded-3 mb-0">
+            <i class="bi bi-shield-check text-success me-1"></i> Your key is saved locally in your project's <code>.env</code> file.
+          </div>
+        </div>
+        <div class="modal-footer border-top px-4 py-3">
+          <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm">
+            <i class="bi bi-check2 me-1"></i> Save & Connect
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

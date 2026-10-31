@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Confirm Delete — Noteforge{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-md-7 col-lg-5">
+    <div class="card card-style bg-white p-4 p-md-5 text-center shadow-sm">
+      <div class="btn-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3" style="width: 56px; height: 56px;">
+        <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+      </div>
+      
+      <h4 class="fw-bold text-dark mb-2">Delete "{{ object_name }}"?</h4>
+      <p class="text-secondary small mb-4 px-md-3">
+        Are you sure you want to permanently delete this item? This action cannot be undone and all associated records will be removed.
+      </p>
+
+      <form method="post" class="d-flex align-items-center justify-content-center gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:request.META.HTTP_REFERER }}">
+        <button type="submit" class="btn btn-danger btn-pill px-4 py-2 fw-semibold">Yes, Delete</button>
+        <a href="{% url cancel_url %}" class="btn btn-light border btn-pill px-4 py-2 text-dark fw-semibold">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+{% block title %}Student MCQ Analytics — Noteforge{% endblock %}
+{% block topbar_title %}Faculty Assessment &amp; Analytics Hub{% endblock %}
+
+{% block content %}
+<style>
+  .sem-card {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    padding: 1.25rem;
+  }
+  .sem-card:hover {
+    border-color: var(--nf-indigo);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.08);
+    color: inherit;
+  }
+  .sem-card.active {
+    border-color: var(--nf-indigo);
+    background: linear-gradient(135deg, #fbfbfe 0%, #eef2ff 100%);
+    box-shadow: 0 0 0 2px var(--nf-indigo);
+  }
+  .sem-badge-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #eef2ff;
+    color: var(--nf-indigo);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .sem-card.active .sem-badge-icon {
+    background: var(--nf-indigo);
+    color: #ffffff;
+  }
+  .quiz-analytics-card {
+    border: 1px solid #eef2f6 !important;
+    border-radius: 14px;
+    transition: box-shadow 0.2s ease;
+  }
+  .quiz-analytics-card:hover {
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  }
+
+  /* Analytics Assessment Table */
+  .analytics-table thead th {
+    background-color: #f8fafc !important;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 18px;
+    border-top: none;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+  .analytics-table tbody td {
+    padding: 16px 18px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+  }
+  .analytics-table tbody tr {
+    transition: background-color 0.15s ease;
+  }
+  .analytics-table tbody tr:hover {
+    background-color: #f8fafc;
+  }
+  .analytics-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+</style>
+
+<!-- Header -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+  <div>
+    <h4 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+      <i class="bi bi-bar-chart-line-fill" style="color: var(--nf-indigo);"></i>
+      <span>Student MCQ Analytics</span>
+    </h4>
+    <p class="text-secondary small mb-0">Select a semester to review student attempt records, class averages, and marksheet breakdowns.</p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'teacher_quiz_list' %}" class="btn btn-outline-secondary rounded-pill px-3 py-1.5" style="font-size: 13px;">
+      <i class="bi bi-arrow-left me-1"></i>Back to Assessments
+    </a>
+  </div>
+</div>
+
+<!-- Choose Semester -->
+<div class="mb-4 pb-1">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <span class="text-uppercase fw-bold text-secondary d-inline-flex align-items-center gap-2" style="font-size: 11.5px; letter-spacing: 0.05em;">
+      <i class="bi bi-calendar3 text-primary" style="font-size: 13px;"></i>
+      <span>Choose Semester</span>
+    </span>
+    {% if selected_sem %}
+      <a href="{% url 'teacher_quiz_analytics' %}" class="small text-muted text-decoration-none">
+        <i class="bi bi-x-circle me-1"></i>Clear selection
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="row g-3">
+    {% for item in sem_stats %}
+    <div class="col-sm-6 col-md-4 col-xl-3">
+      <a href="?sem={{ item.semester.pk }}" class="sem-card {% if selected_sem and selected_sem.pk == item.semester.pk %}active{% endif %}">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="sem-badge-icon">
+            <span>S{{ item.semester.number }}</span>
+          </div>
+          {% if selected_sem and selected_sem.pk == item.semester.pk %}
+            <span class="badge rounded-pill bg-primary px-2.5 py-1" style="font-size: 11px;">Selected</span>
+          {% else %}
+            <span class="badge rounded-pill bg-light text-secondary border" style="font-size: 11px;">
+              {{ item.quiz_count }} test{{ item.quiz_count|pluralize }}
+            </span>
+          {% endif %}
+        </div>
+        <div class="fw-bold text-dark mb-0.5" style="font-size: 14.5px;">Semester {{ item.semester.number }}</div>
+        <div class="text-secondary small mb-2 text-truncate">{{ item.semester.department.name }}</div>
+
+        <div class="pt-2 border-top d-flex align-items-center justify-content-between small text-muted">
+          <span><i class="bi bi-person-check me-1"></i>{{ item.attempts_count }} attempt{{ item.attempts_count|pluralize }}</span>
+          {% if item.avg_score is not None %}
+            <span class="fw-semibold {% if item.avg_score >= 70 %}text-success{% elif item.avg_score >= 50 %}text-warning{% else %}text-danger{% endif %}">
+              Avg {{ item.avg_score }}%
+            </span>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </div>
+      </a>
+    </div>
+    {% empty %}
+    <div class="col-12">
+      <div class="card p-4 text-center text-muted border-dashed rounded-3">
+        No semesters found in your department.
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Step 2: View inside selected semester's MCQ attempts -->
+{% if selected_sem %}
+<div class="card bg-white shadow-sm border-0 rounded-4 overflow-hidden quiz-analytics-card mb-5" style="border: 1px solid #eef2f6 !important;">
+  <div class="card-header bg-white py-3.5 px-4 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h6 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2" style="font-size: 15px;">
+        <i class="bi bi-journal-check text-primary"></i>
+        <span>MCQ Tests &amp; Attempts in Semester {{ selected_sem.number }}</span>
+      </h6>
+      <span class="text-muted small">Showing all configured assessments and student submission data for this term</span>
+    </div>
+    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 12px;">
+      {{ quizzes_data|length }} Test{{ quizzes_data|length|pluralize }}
+    </span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table analytics-table align-middle mb-0">
+      <thead>
+        <tr>
+          <th class="ps-4">Title</th>
+          <th>Subject</th>
+          <th class="text-center">Batch</th>
+          <th class="text-center">Participation</th>
+          <th class="text-center">Class Avg</th>
+          <th class="text-center">Pass Rate</th>
+          <th class="pe-4 text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in quizzes_data %}
+        <tr>
+          <td class="ps-4">
+            <strong class="text-dark d-block mb-0.5" style="font-size: 14px;">{{ item.quiz.title }}</strong>
+            <small class="text-muted" style="font-size: 12px;">
+              {{ item.quiz.num_questions }} MCQs &bull; {{ item.quiz.time_limit_mins }} mins
+            </small>
+          </td>
+          <td>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-semibold" style="font-size: 11.5px;">
+              {{ item.quiz.subject.subject_code }}
+            </span>
+          </td>
+          <td class="text-center">
+            {% if item.quiz.batch %}
+              <span class="badge bg-light text-dark border px-2.5 py-1 rounded-pill fw-normal" style="font-size: 11.5px;">
+                {{ item.quiz.batch.name }}
+              </span>
+            {% else %}
+              <span class="text-muted small">All Batches</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <div class="fw-semibold text-dark" style="font-size: 13.5px;">{{ item.distinct_students }}/{{ item.total_enrolled }}</div>
+            <small class="text-muted" style="font-size: 11px;">
+              {{ item.attempts_count }} attempt{{ item.attempts_count|pluralize }}
+            </small>
+          </td>
+          <td class="text-center">
+            {% if item.attempts_count > 0 %}
+              <span class="badge {% if item.avg_percentage >= 70 %}bg-success-subtle text-success border border-success-subtle{% elif item.avg_percentage >= 50 %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% else %}bg-danger-subtle text-danger border border-danger-subtle{% endif %} px-2.5 py-1 rounded-pill fw-semibold" style="font-size: 11.5px;">
+                {{ item.avg_percentage }}%
+              </span>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if item.attempts_count > 0 %}
+              <span class="fw-bold {% if item.pass_rate >= 60 %}text-success{% else %}text-danger{% endif %}" style="font-size: 13px;">
+                {{ item.pass_rate }}%
+              </span>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td class="pe-4 text-end">
+            <a href="{% url 'teacher_quiz_test_analytics' item.quiz.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-semibold shadow-none" style="font-size: 12px; white-space: nowrap;">
+              View Analytics
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5 small">
+            <i class="bi bi-clipboard2-data fs-2 d-block mb-2 opacity-50 text-secondary"></i>
+            No MCQ assessments configured for Semester {{ selected_sem.number }} yet.<br>
+            <a href="{% url 'teacher_quiz_select_batch' %}" class="fw-semibold text-primary mt-1 d-inline-block">Configure an MCQ test &rarr;</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card p-5 text-center text-muted border-0 shadow-sm rounded-4" style="background: #ffffff; border: 1.5px dashed #cbd5e1 !important;">
+  <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px; background: #eef2ff; color: var(--nf-indigo);">
+    <i class="bi bi-cursor-fill fs-4"></i>
+  </div>
+  <h6 class="fw-bold text-dark mb-1">Choose a Semester Above</h6>
+  <p class="text-secondary small mb-0" style="max-width: 440px; margin: 0 auto;">
+    Click on any semester card above to inspect that semester's MCQ assessments, student participation rates, and marksheet analytics.
+  </p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,436 @@
+{% extends 'base.html' %}
+{% block title %}My Profile & Courses — Noteforge{% endblock %}
+{% block topbar_title %}My Profile{% endblock %}
+
+{% block content %}
+<style>
+  .dashboard-card {
+    background: #ffffff;
+    border: 1px solid #eef2f6 !important;
+    border-radius: 16px !important;
+    padding: 1.5rem !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .pulse-dot-red {
+    width: 7px;
+    height: 7px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: pulse-ring 1.6s infinite ease-out;
+  }
+  .pulse-dot-white {
+    width: 6px;
+    height: 6px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse-glow 1.4s infinite ease-in-out;
+  }
+  @keyframes pulse-ring {
+    0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+    100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(1.3); }
+  }
+  .quiz-item-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem;
+  }
+  .metric-box {
+    background: #f8fafc;
+    border: 1px solid #edf2f7;
+    border-radius: 14px;
+    padding: 1.25rem;
+  }
+  /* Motivational Quote Banner */
+  .quote-banner {
+    background: linear-gradient(135deg, rgba(238, 242, 255, 0.75) 0%, rgba(245, 243, 255, 0.95) 100%);
+    border: 1px solid rgba(199, 210, 254, 0.6) !important;
+    border-radius: 12px;
+    padding: 0.8rem 1.4rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.04);
+    animation: quoteFadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .quote-banner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 80%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+    transform: skewX(-22deg);
+    animation: quoteShimmer 4s infinite 1.2s;
+    pointer-events: none;
+  }
+  @keyframes quoteFadeIn {
+    0% { opacity: 0; transform: translateY(6px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes quoteShimmer {
+    0% { left: -150%; }
+    40%, 100% { left: 160%; }
+  }
+  .quote-content {
+    font-size: 0.93rem;
+    font-weight: 500;
+    color: #334155;
+    line-height: 1.5;
+    font-style: italic;
+    min-height: 1.5em;
+    text-align: center;
+  }
+  .quote-mark {
+    color: var(--nf-indigo, #4f46e5);
+    font-weight: 700;
+    font-size: 1.1rem;
+    font-style: normal;
+  }
+  .quote-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.05em;
+    background-color: var(--nf-indigo, #4f46e5);
+    vertical-align: middle;
+    margin-left: 2px;
+    animation: quoteCursorBlink 0.75s infinite;
+  }
+  @keyframes quoteCursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+</style>
+
+<!-- ============================================================ -->
+<!-- TOP ROW: STUDENT PROFILE & ACADEMIC SUMMARY TILE             -->
+<!-- ============================================================ -->
+<div class="row g-4 mb-4">
+
+  <!-- Student Profile Card -->
+  <div class="col-lg-8">
+    <div class="dashboard-card h-100 d-flex flex-column justify-content-between">
+      <div class="d-flex align-items-start justify-content-between">
+        <div class="d-flex flex-column flex-sm-row align-items-center align-items-sm-start gap-4 flex-grow-1">
+          <!-- Profile Avatar Circle -->
+          <div class="position-relative flex-shrink-0">
+            <div class="rounded-circle text-primary d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 82px; height: 82px; font-size: 1.85rem; border: 3px solid #ffffff; color: var(--nf-indigo) !important; background-color: var(--nf-indigo-light) !important;">
+              {{ student.username|slice:":1"|upper }}
+            </div>
+          </div>
+          <div class="flex-grow-1">
+            <h4 class="fw-bold text-dark mb-1">{{ student.get_full_name|default:student.username }}</h4>
+            <div class="text-muted small mb-3 d-flex align-items-center">
+              <i class="bi bi-mortarboard text-primary me-2" style="font-size: 15px;"></i><span>{{ student.department.name|default:"Department Not Assigned" }}</span>
+            </div>
+            
+            <div class="row gx-4 mb-3" style="row-gap: 0.65rem; font-size: 0.86rem;">
+              <div class="col-sm-6">
+                <span class="text-muted">Register No:</span> <span class="text-dark fw-medium ms-1">{{ student.username }}</span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted">Batch:</span> <span class="text-dark fw-medium ms-1">{{ student.batch|default:"Default Batch" }}</span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted">Semester:</span> <span class="text-dark fw-medium ms-1">Semester {{ student.semester.number|default:"1" }}</span>
+                {% if previous_semesters_count > 0 %}
+                <a href="{% url 'student_material_list' %}" class="badge bg-secondary-subtle text-secondary text-decoration-none ms-1.5" title="View past semester notes">
+                  <i class="bi bi-archive me-1"></i>{{ previous_semesters_count }} Past Term{{ previous_semesters_count|pluralize }}
+                </a>
+                {% endif %}
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted">Email:</span> <span class="text-dark fw-medium ms-1">{{ student.email|default:"Not specified" }}</span>
+              </div>
+            </div>
+
+            <!-- Quick Action Launcher Circles -->
+            <div class="d-flex align-items-center gap-3 pt-1" style="gap: 14px !important;">
+              <a href="{% url 'student_material_list' %}" class="btn btn-circle bg-primary bg-opacity-10 text-primary shadow-2xs" title="Course Notes" style="color: var(--nf-indigo) !important; background-color: var(--nf-indigo-light) !important;">
+                <i class="bi bi-book"></i>
+              </a>
+              <a href="{% url 'student_quiz_list' %}" class="btn btn-circle bg-warning bg-opacity-10 text-warning shadow-2xs" title="Quizzes">
+                <i class="bi bi-pen"></i>
+              </a>
+              <a href="{% url 'student_my_library' %}" class="btn btn-circle bg-success bg-opacity-10 text-success shadow-2xs" title="My Library">
+                <i class="bi bi-bookmark-star"></i>
+              </a>
+              <a href="{% url 'student_youtube_summarizer' %}" class="btn btn-circle bg-danger bg-opacity-10 text-danger shadow-2xs" title="Video Summarizer">
+                <i class="bi bi-youtube"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <a href="{% url 'student_change_password' %}" class="btn btn-circle btn-light border text-muted shadow-2xs ms-2 flex-shrink-0" title="Account Settings">
+          <i class="bi bi-gear"></i>
+        </a>
+      </div>
+
+      <!-- Motivational Quote Banner (Random Quote with Shimmer & Typewriter Reveal) -->
+      <div class="quote-banner mt-4 d-flex align-items-center justify-content-center text-center">
+        <div class="quote-content">
+          <span class="quote-mark">“</span><span id="typewriter-quote" data-quote="{{ daily_quote }}">{{ daily_quote }}</span><span class="quote-mark">”</span><span id="quote-cursor" class="quote-cursor"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Academic Summary Tile Card -->
+  <div class="col-lg-4">
+    <div class="dashboard-card h-100 d-flex flex-column justify-content-between">
+      <div>
+        <h6 class="fw-bold text-dark mb-3">Academic Overview</h6>
+        
+        <div class="p-3 bg-light rounded-3 mb-3 d-flex align-items-center justify-content-between border">
+          <div>
+            <div class="text-muted small fw-medium">Available Materials</div>
+            <div class="fw-bold text-dark fs-5">{{ materials_count }} Note{{ materials_count|pluralize }}</div>
+          </div>
+          <div class="btn-circle bg-primary bg-opacity-10 text-primary fw-bold shadow-2xs" style="color: var(--nf-indigo) !important;">
+            <i class="bi bi-journal-text"></i>
+          </div>
+        </div>
+
+        <div class="p-3 bg-light rounded-3 d-flex align-items-center justify-content-between border">
+          <div>
+            <div class="text-muted small fw-medium">Pending Quizzes</div>
+            <div class="fw-bold {% if pending_quizzes %}text-danger{% else %}text-success{% endif %} fs-5">
+              {{ pending_quizzes|length }} Test{{ pending_quizzes|length|pluralize }}
+            </div>
+          </div>
+          <div class="btn-circle {% if pending_quizzes %}bg-danger bg-opacity-10 text-danger{% else %}bg-success bg-opacity-10 text-success{% endif %} fw-bold shadow-2xs">
+            <i class="bi {% if pending_quizzes %}bi-clock-history{% else %}bi-check-circle{% endif %}"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <a href="{% url 'student_material_list' %}" class="btn btn-primary btn-pill w-100 text-center shadow-sm">
+          Browse All Courses →
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- BOTTOM ROW: SEMESTER PROGRESS (LEFT) & PENDING QUIZZES (RIGHT)-->
+<!-- ============================================================ -->
+<div class="row g-4 mb-5 pb-3">
+
+  <!-- 1. Semester Progress & Performance Radar (Left Column) -->
+  <div class="col-lg-6">
+    <div class="dashboard-card h-100 d-flex flex-column">
+      
+      <!-- Card Header -->
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <div class="d-flex align-items-center">
+          <div class="rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0 me-3" style="width: 40px; height: 40px; background: #eef2ff; color: var(--nf-indigo, #4f46e5);">
+            <i class="bi bi-speedometer2 fs-5"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-dark mb-0" style="font-size: 15px;">Semester Progress</h6>
+          </div>
+        </div>
+        <span class="badge {{ grade_badge_bg }} rounded-pill px-2.5 py-1" style="font-size: 11px;">
+          <i class="bi bi-award-fill me-1.5"></i>{{ grade_band }}
+        </span>
+      </div>
+
+      <!-- Curriculum Coverage Box -->
+      <div class="metric-box mb-3" style="background: #ffffff;">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small fw-bold text-dark d-flex align-items-center">
+            <i class="bi bi-journal-bookmark-fill me-2 text-primary"></i><span>Curriculum Coverage</span>
+          </span>
+          <span class="small fw-bold text-primary font-monospace">{{ curriculum_coverage_pct }}% Explored</span>
+        </div>
+        <!-- Coverage Bar -->
+        <div class="progress mb-3" style="height: 9px; border-radius: 999px; background-color: #e2e8f0;">
+          <div class="progress-bar bg-primary" role="progressbar" style="width: {{ curriculum_coverage_pct }}%; border-radius: 999px;"></div>
+        </div>
+        <div class="row g-2 text-center">
+          <div class="col-6">
+            <div class="p-2.5 rounded-3 bg-light border">
+              <div class="fw-bold text-dark fs-6">{{ materials_read_count }}</div>
+              <div class="text-muted" style="font-size: 11px;">Materials Read / Summarized</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2.5 rounded-3 bg-light border">
+              <div class="fw-bold text-dark fs-6">{{ materials_remaining_count }}</div>
+              <div class="text-muted" style="font-size: 11px;">Remaining to Explore</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grade Band Display Metric Box -->
+      <div class="metric-box mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small fw-semibold text-secondary text-uppercase" style="font-size: 10.5px; letter-spacing: 0.05em;">Academic Grade Band</span>
+          <span class="badge {{ grade_badge_bg }} rounded-pill px-2 py-0.5 fw-bold" style="font-size: 11px;">{{ grade_band }}</span>
+        </div>
+        <div class="d-flex align-items-baseline gap-2">
+          <span class="display-6 fw-bold text-dark" style="font-size: 2.15rem; line-height: 1;">{{ avg_score }}%</span>
+          <span class="text-secondary small fw-medium">Cumulative Assessment Average</span>
+        </div>
+      </div>
+
+      <!-- Quick Link to Analytics -->
+      <div class="mt-auto">
+        <a href="{% url 'student_performance_analytics' %}" class="btn btn-outline-primary rounded-pill w-100 fw-semibold d-flex align-items-center justify-content-center gap-2 py-2.5 shadow-2xs" style="font-size: 13px;">
+          <i class="bi bi-graph-up-arrow me-1"></i>
+          <span>View Detailed Performance & Topic Analytics</span>
+          <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 2. Upcoming & Pending Quizzes Alert (Right Column) -->
+  <div class="col-lg-6">
+    <div class="dashboard-card h-100 d-flex flex-column">
+      
+      <!-- Card Header -->
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <div class="d-flex align-items-center">
+          <div class="rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0 me-3" style="width: 40px; height: 40px; background: #fef2f2; color: #dc2626;">
+            <i class="bi bi-bell-fill fs-5"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-dark mb-0" style="font-size: 15px;">Pending Quizzes</h6>
+          </div>
+        </div>
+        {% if pending_quizzes %}
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 fw-bold" style="font-size: 11px;">
+          <span class="pulse-dot-red me-1.5"></span>{{ pending_quizzes|length }} Pending
+        </span>
+        {% else %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11px;">
+          <i class="bi bi-check-circle me-1.5"></i>All Caught Up
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Pending Quizzes List -->
+      {% if pending_quizzes %}
+      <div class="d-flex flex-column gap-3 overflow-auto pe-1 mb-3" style="max-height: 380px;">
+        {% for q in pending_quizzes %}
+        <div class="quiz-item-card">
+          <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-1">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2.5 py-1" style="font-size: 11px;">
+                {{ q.subject.subject_code }}
+              </span>
+              <span class="text-secondary small d-flex align-items-center" style="font-size: 11.5px;">
+                <i class="bi bi-person me-1.5"></i>Faculty: <strong class="text-dark ms-1">{{ q.created_by.get_full_name|default:q.created_by.username }}</strong>
+              </span>
+            </div>
+            {% if q.is_new %}
+            <span class="badge bg-danger text-white rounded-pill px-2 py-0.5 d-inline-flex align-items-center gap-1 shadow-2xs" style="font-size: 10px; letter-spacing: 0.04em;">
+              <span class="pulse-dot-white"></span> NEW
+            </span>
+            {% endif %}
+          </div>
+
+          <h6 class="fw-bold text-dark mb-2.5 text-truncate" style="font-size: 15px;">{{ q.title }}</h6>
+          
+          <div class="d-flex align-items-center justify-content-between pt-2 border-top flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3 text-muted small" style="font-size: 11.5px;">
+              <span class="d-flex align-items-center"><i class="bi bi-patch-question me-1.5 text-primary"></i>{{ q.num_questions }} Question{{ q.num_questions|pluralize }}</span>
+              <span class="d-flex align-items-center"><i class="bi bi-clock me-1.5 text-warning"></i>{{ q.time_limit_mins }} Mins</span>
+            </div>
+            <a href="{% url 'student_quiz_take' q.pk %}" class="btn btn-sm btn-primary rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center shadow-sm" style="font-size: 12px; gap: 8px;">
+              <span>Take Quiz Now</span>
+              <i class="bi bi-arrow-right"></i>
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Quick Helpful Tip Box when few quizzes are pending -->
+      <div class="p-3 rounded-3 bg-light border d-flex align-items-center mb-3 mt-auto">
+        <i class="bi bi-lightbulb-fill text-warning fs-5 flex-shrink-0 me-3"></i>
+        <div class="small text-muted" style="font-size: 11.5px;">
+          <strong class="text-dark">Study Tip:</strong> Timely completion of teacher quizzes keeps your mastery rating active and unlocks focused AI practice recommendations.
+        </div>
+      </div>
+
+      {% else %}
+      <div class="d-flex flex-column align-items-center justify-content-center text-center p-4 my-auto">
+        <div class="rounded-circle d-flex align-items-center justify-content-center mb-3 shadow-2xs" style="width: 58px; height: 58px; background: #ecfdf5; color: #059669;">
+          <i class="bi bi-check-circle-fill fs-2"></i>
+        </div>
+        <h6 class="fw-bold text-dark mb-1">You're All Caught Up!</h6>
+        <p class="text-muted small mb-3" style="max-width: 320px; font-size: 12px;">
+          There are no pending quizzes right now. You've attempted all published assessments for your semester.
+        </p>
+        <a href="{% url 'student_quiz_list' %}" class="btn btn-sm btn-light border rounded-pill px-3.5 py-1.5 text-secondary fw-semibold shadow-2xs" style="font-size: 12px;">
+          View All Past Attempts →
+        </a>
+      </div>
+      {% endif %}
+
+      <div class="mt-auto pt-2.5 text-center border-top">
+        <a href="{% url 'student_quiz_list' %}" class="text-decoration-none small text-muted fw-semibold" style="font-size: 12px;">
+          View All Quizzes & Practice History →
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Smooth typewriter reveal effect for motivational quote
+  document.addEventListener('DOMContentLoaded', function() {
+    const quoteEl = document.getElementById('typewriter-quote');
+    const cursorEl = document.getElementById('quote-cursor');
+    if (quoteEl) {
+      const fullText = quoteEl.getAttribute('data-quote') || quoteEl.textContent.trim();
+      quoteEl.textContent = '';
+      let charIdx = 0;
+      const typeSpeed = 24; // ms per char
+
+      function typeChar() {
+        if (charIdx < fullText.length) {
+          quoteEl.textContent += fullText.charAt(charIdx);
+          charIdx++;
+          setTimeout(typeChar, typeSpeed);
+        } else {
+          // Keep cursor blinking for a short while, then smoothly fade out
+          setTimeout(function() {
+            if (cursorEl) {
+              cursorEl.style.transition = 'opacity 0.6s ease';
+              cursorEl.style.opacity = '0';
+              setTimeout(function() {
+                if (cursorEl && cursorEl.parentNode) {
+                  cursorEl.remove();
+                }
+              }, 600);
+            }
+          }, 1800);
+        }
+      }
+
+      // Small initial delay so user notices the typing start on page load
+      setTimeout(typeChar, 300);
+    }
+  });
+</script>
+{% endblock %}

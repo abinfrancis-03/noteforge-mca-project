@@ -1,0 +1,8 @@
+Django>=4.2
+pypdf>=4.0.0
+pdfplumber>=0.11.0
+anthropic>=0.20.0
+google-generativeai>=0.8.0
+
+
+
