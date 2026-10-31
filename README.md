@@ -1,50 +1,47 @@
-# Noteforge — Admin Module Setup
+# Django Fashion E-Commerce Website
 
-## 1. Install dependencies
-```bash
-pip install -r requirements.txt
-```
+## About the Project
+A modern fashion e-commerce website developed using Python and Django. Users can browse products, register, log in, add products to their cart and place orders.
 
-## 2. Run migrations
-```bash
-python manage.py makemigrations accounts
-python manage.py makemigrations
-python manage.py migrate
-```
+## Technologies Used
+- Python
+- Django
+- HTML
+- CSS
+- Bootstrap
+- SQLite
 
-## 3. Create superuser (Admin account)
-```bash
-python manage.py shell
-```
-Then paste:
-```python
-from accounts.models import User
-User.objects.create_superuser(
-    username='admin',
-    password='admin123',
-    email='admin@noteforge.com',
-    role='admin',
-    is_first_login=False
-)
-exit()
-```
+## Features
+- User Registration and Login
+- Product Listing and Details
+- Product Categories
+- Shopping Cart
+- Checkout System
+- Admin Dashboard
 
-## 4. Run server
-```bash
-python manage.py runserver
-```
+## Installation
 
-## 5. Open browser
-- Login: http://127.0.0.1:8000/login/
-- Username: `admin`  |  Password: `admin123`
+1. Clone the repository:
+   ```bash
+   git clone YOUR_GITHUB_REPOSITORY_URL
+   ```
 
----
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Admin Module covers:
-- Dashboard with stats
-- Departments — Add / Edit / Delete
-- Semesters — Add / Edit / Delete (filtered by dept)
-- Subjects — Add / Edit / Delete (filtered by semester)
-- Teachers — Add / Edit / Delete / Reset Password
-- Students — Add / Edit / Delete / Reset Password
-- Audit Log — full action trail with filter
+3. Run migrations:
+   ```bash
+   python manage.py migrate
+   ```
+
+4. Start the server:
+   ```bash
+   python manage.py runserver
+   ```
+
+## Developer
+Abin Francis
+
+Python Full Stack Developer | MCA Student
